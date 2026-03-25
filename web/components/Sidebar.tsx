@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Dashboard', icon: '🏠' },
@@ -13,6 +14,16 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  if (pathname === '/login') return null;
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.replace('/login');
+  };
 
   return (
     <aside className="w-56 min-h-screen bg-primary flex flex-col shadow-lg">
@@ -42,6 +53,16 @@ export default function Sidebar() {
           );
         })}
       </nav>
+      <div className="p-3 border-t border-primary-dark">
+        <button
+          onClick={handleLogout}
+          disabled={loggingOut}
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white/70 hover:text-white hover:bg-white/10 rounded transition-colors disabled:opacity-50"
+        >
+          <span>🚪</span>
+          <span>{loggingOut ? 'Signing out…' : 'Sign Out'}</span>
+        </button>
+      </div>
     </aside>
   );
 }

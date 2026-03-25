@@ -1,15 +1,24 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
+# ─── Dependencies ────────────────────────────────────────────────────────────
 node_modules/
 
-# Expo
+# ─── Environment / Secrets ───────────────────────────────────────────────────
+.env*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ─── Expo / React Native ─────────────────────────────────────────────────────
 .expo/
 dist/
 web-build/
 expo-env.d.ts
 
-# Native
+# Generated native project folders (created by `expo prebuild`)
+/android
+/ios
+
+# Native signing / provisioning artefacts
 .kotlin/
 *.orig.*
 *.jks
@@ -17,25 +26,25 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+*.pem
 
-# Metro
+# Metro bundler
 .metro-health-check*
 
-# debug
+# ─── Next.js (web/) ──────────────────────────────────────────────────────────
+.next/
+out/
+
+# ─── TypeScript ──────────────────────────────────────────────────────────────
+*.tsbuildinfo
+
+# ─── Debug logs ──────────────────────────────────────────────────────────────
 npm-debug.*
 yarn-debug.*
 yarn-error.*
 
-# macOS
+# ─── OS / IDE ────────────────────────────────────────────────────────────────
 .DS_Store
-*.pem
-
-# local env files
-.env*.local
-
-# typescript
-*.tsbuildinfo
-
-# generated native folders
-/ios
-/android
+Thumbs.db
+.idea/
+.vscode/
