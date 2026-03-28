@@ -37,6 +37,8 @@ export default function EditMedicinePage() {
         selling_price: m.selling_price,
         gst_percent: m.gst_percent,
         stock_qty: m.stock_qty,
+        packing: m.packing ?? '',
+        packing_qty: m.packing_qty ?? 1,
         hsn: m.hsn ?? '',
         rate: m.rate ?? 0,
         discount: m.discount ?? 0,
@@ -54,6 +56,8 @@ export default function EditMedicinePage() {
       batch_no: data.batch_no ?? '',
       expiry_month: data.expiry_month ?? null,
       expiry_year: data.expiry_year ?? null,
+      packing: data.packing ?? '',
+      packing_qty: data.packing_qty ?? 1,
       hsn: data.hsn ?? '',
       rate: data.rate ?? 0,
       discount: data.discount ?? 0,
@@ -126,11 +130,23 @@ export default function EditMedicinePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="label">Packing</label>
+              <input className="input" placeholder="e.g. Strip of 10" {...register('packing')} />
+            </div>
+            <div>
+              <label className="label">Units / Pack</label>
+              <input className="input" type="number" min={1} {...register('packing_qty')} />
+              {errors.packing_qty && <p className="error-text">{errors.packing_qty.message}</p>}
+            </div>
             <div>
               <label className="label">HSN Code</label>
               <input className="input" {...register('hsn')} />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Rate (₹)</label>
               <input className="input" type="number" step="0.01" {...register('rate')} />

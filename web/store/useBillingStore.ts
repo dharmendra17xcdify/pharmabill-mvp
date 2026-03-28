@@ -6,7 +6,7 @@ import { calcGST } from '@/utils/gst';
 
 interface BillingStore {
   cartItems: CartItem[];
-  addToCart: (medicine: Medicine, qty: number) => void;
+  addToCart: (medicine: Medicine, qty: number, isLoose?: boolean) => void;
   removeFromCart: (medicineId: number) => void;
   updateQty: (medicineId: number, qty: number) => void;
   clearCart: () => void;
@@ -16,15 +16,19 @@ interface BillingStore {
 export const useBillingStore = create<BillingStore>((set, get) => ({
   cartItems: [],
 
-  addToCart: (medicine: Medicine, qty: number) => {
-    const { lineTotal, gstAmount } = calcGST(medicine.selling_price, qty, medicine.gst_percent);
+  addToCart: (medicine: Medicine, qty: number, isLoose = false) => {
+    const packingQty = medicine.packing_qty && medicine.packing_qty > 1 ? medicine.packing_qty : 1;
+    const unitPrice = isLoose
+      ? parseFloat((medicine.selling_price / packingQty).toFixed(2))
+      : medicine.selling_price;
+    const { lineTotal, gstAmount } = calcGST(unitPrice, qty, medicine.gst_percent);
     const existing = get().cartItems.find(i => i.medicine_id === medicine.id!);
     if (existing) {
       set(state => ({
         cartItems: state.cartItems.map(i => {
           if (i.medicine_id !== medicine.id!) return i;
           const newQty = i.qty + qty;
-          const { lineTotal: lt, gstAmount: ga } = calcGST(medicine.selling_price, newQty, medicine.gst_percent);
+          const { lineTotal: lt, gstAmount: ga } = calcGST(i.unit_price, newQty, i.gst_percent);
           return { ...i, qty: newQty, gst_amount: ga, line_total: lt };
         }),
       }));
@@ -40,8 +44,9 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
             expiry_month: medicine.expiry_month,
             expiry_year: medicine.expiry_year,
             manufacture_name: medicine.manufacture_name ?? '',
+            is_loose: isLoose,
             qty,
-            unit_price: medicine.selling_price,
+            unit_price: unitPrice,
             mrp: medicine.mrp,
             gst_percent: medicine.gst_percent,
             gst_amount: gstAmount,

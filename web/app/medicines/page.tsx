@@ -70,6 +70,9 @@ export default function MedicinesPage() {
                         {m.generic_name && (
                           <div className="text-gray-400 text-xs">{m.generic_name}</div>
                         )}
+                        {m.packing && (
+                          <div className="text-gray-400 text-xs">{m.packing}</div>
+                        )}
                       </td>
                       <td className="table-cell text-gray-500">{m.batch_no || '—'}</td>
                       <td className="table-cell">

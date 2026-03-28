@@ -41,9 +41,15 @@ export function buildWhatsAppMessage(
   return lines.join('\n');
 }
 
-const STORE_WHATSAPP = '918108401991';
+function toFullPhone(phone?: string): string {
+  const digits = phone?.replace(/\D/g, '') ?? '';
+  return digits.length === 10 ? `91${digits}` : digits;
+}
 
-export function getWhatsAppUrl(message: string, _phone?: string): string {
+export function getWhatsAppUrl(message: string, customerPhone?: string, storePhone?: string): string {
   const encoded = encodeURIComponent(message);
-  return `https://wa.me/${STORE_WHATSAPP}?text=${encoded}`;
+  const fullPhone = toFullPhone(customerPhone) || toFullPhone(storePhone);
+  return fullPhone
+    ? `https://wa.me/${fullPhone}?text=${encoded}`
+    : `https://wa.me/?text=${encoded}`;
 }

@@ -8,6 +8,7 @@ export interface BillItem {
   expiry_month: number | null;
   expiry_year: number | null;
   manufacture_name: string;
+  is_loose: boolean;
   qty: number;
   unit_price: number;
   gst_percent: number;
@@ -40,6 +41,7 @@ export interface CartItem {
   expiry_month: number | null;
   expiry_year: number | null;
   manufacture_name: string;
+  is_loose: boolean;
   qty: number;
   unit_price: number;
   mrp: number;

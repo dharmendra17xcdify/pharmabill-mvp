@@ -22,6 +22,7 @@ export default function NewBillPage() {
   const [paymentMode, setPaymentMode] = useState('Cash');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [qtyInputs, setQtyInputs] = useState<Record<number, number>>({});
+  const [looseInputs, setLooseInputs] = useState<Record<number, boolean>>({});
 
   useEffect(() => { loadMedicines(); return () => clearCart(); }, []);
 
@@ -37,7 +38,8 @@ export default function NewBillPage() {
 
   const handleAdd = (medicine: Medicine) => {
     const qty = qtyInputs[medicine.id!] ?? 1;
-    addToCart(medicine, qty);
+    const isLoose = looseInputs[medicine.id!] ?? false;
+    addToCart(medicine, qty, isLoose);
     setQuery('');
     setResults([]);
   };
@@ -101,37 +103,58 @@ export default function NewBillPage() {
 
             {results.length > 0 && (
               <div className="mt-2 border border-gray-200 rounded-md overflow-hidden">
-                {results.map(m => (
-                  <div
-                    key={m.id}
-                    className="flex items-center justify-between p-2 hover:bg-gray-50 border-b last:border-b-0"
-                  >
-                    <div>
-                      <div className="text-sm font-medium">{m.name}</div>
-                      {m.generic_name && <div className="text-xs text-gray-400">{m.generic_name}</div>}
-                      <div className="text-xs text-gray-500">
-                        {formatINR(Number(m.selling_price))} · Stock: {m.stock_qty}
+                {results.map(m => {
+                  const isLoose = looseInputs[m.id!] ?? false;
+                  const packingQty = m.packing_qty && m.packing_qty > 1 ? m.packing_qty : 1;
+                  const displayPrice = isLoose
+                    ? parseFloat((Number(m.selling_price) / packingQty).toFixed(2))
+                    : Number(m.selling_price);
+                  return (
+                    <div
+                      key={m.id}
+                      className="flex items-center justify-between p-2 hover:bg-gray-50 border-b last:border-b-0"
+                    >
+                      <div>
+                        <div className="text-sm font-medium">{m.name}</div>
+                        {m.generic_name && <div className="text-xs text-gray-400">{m.generic_name}</div>}
+                        <div className="text-xs text-gray-500">
+                          {m.packing && <span className="mr-1">{m.packing} ·</span>}
+                          {formatINR(displayPrice)}{isLoose ? '/tablet' : '/strip'} · Stock: {m.stock_qty}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {packingQty > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setLooseInputs(prev => ({ ...prev, [m.id!]: !isLoose }))}
+                            className={`text-xs px-2 py-1 rounded border font-medium transition-colors ${
+                              isLoose
+                                ? 'bg-warning text-white border-warning'
+                                : 'bg-white text-gray-500 border-gray-300 hover:border-warning hover:text-warning'
+                            }`}
+                          >
+                            Loose
+                          </button>
+                        )}
+                        <input
+                          type="number"
+                          min={1}
+                          max={isLoose ? m.stock_qty * packingQty : m.stock_qty}
+                          defaultValue={1}
+                          className="input w-16 text-center text-sm"
+                          onChange={e => setQtyInputs(prev => ({ ...prev, [m.id!]: Number(e.target.value) }))}
+                        />
+                        <button
+                          onClick={() => handleAdd(m)}
+                          className="btn-primary text-xs px-3 py-1"
+                          disabled={m.stock_qty === 0}
+                        >
+                          Add
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min={1}
-                        max={m.stock_qty}
-                        defaultValue={1}
-                        className="input w-16 text-center text-sm"
-                        onChange={e => setQtyInputs(prev => ({ ...prev, [m.id!]: Number(e.target.value) }))}
-                      />
-                      <button
-                        onClick={() => handleAdd(m)}
-                        className="btn-primary text-xs px-3 py-1"
-                        disabled={m.stock_qty === 0}
-                      >
-                        Add
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -192,9 +215,14 @@ export default function NewBillPage() {
                   <div key={item.medicine_id} className="border border-gray-100 rounded p-2">
                     <div className="flex justify-between items-start">
                       <div>
-                        <div className="text-sm font-medium">{item.medicine_name}</div>
+                        <div className="flex items-center gap-1">
+                          <div className="text-sm font-medium">{item.medicine_name}</div>
+                          {item.is_loose && (
+                            <span className="text-xs bg-warning/10 text-warning border border-warning/30 rounded px-1">Loose</span>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-400">
-                          {formatINR(item.unit_price)} × {item.qty} = {formatINR(item.line_total)}
+                          {formatINR(item.unit_price)} × {item.qty}{item.is_loose ? ' tab' : ''} = {formatINR(item.line_total)}
                         </div>
                         <div className="text-xs text-gray-400">GST: {formatINR(item.gst_amount)}</div>
                       </div>

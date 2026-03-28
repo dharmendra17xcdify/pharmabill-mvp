@@ -82,7 +82,7 @@ export default function BillDetailPage() {
         a.download = `${bill.bill_number}.pdf`;
         a.click();
         URL.revokeObjectURL(url);
-        window.open(getWhatsAppUrl(message, bill.customer_phone), '_blank', 'noopener,noreferrer');
+        window.open(getWhatsAppUrl(message, bill.customer_phone, settings?.phone), '_blank', 'noopener,noreferrer');
       }
     } catch (err) {
       if (err instanceof Error && err.name !== 'AbortError') {
@@ -173,7 +173,12 @@ export default function BillDetailPage() {
                 <tr key={item.id} className={i % 2 === 1 ? 'bg-gray-50' : ''}>
                   <td className="table-cell text-gray-400">{i + 1}</td>
                   <td className="table-cell">
-                    <div className="font-medium">{item.medicine_name}</div>
+                    <div className="flex items-center gap-1 font-medium">
+                      {item.medicine_name}
+                      {item.is_loose && (
+                        <span className="text-xs bg-warning/10 text-warning border border-warning/30 rounded px-1">Loose</span>
+                      )}
+                    </div>
                     {item.batch_no && <div className="text-xs text-gray-400">Batch: {item.batch_no}</div>}
                   </td>
                   <td className="table-cell text-xs text-gray-500">{item.hsn || '—'}</td>
@@ -183,7 +188,7 @@ export default function BillDetailPage() {
                       : '—'}
                   </td>
                   <td className="table-cell text-xs text-gray-500">{item.manufacture_name || '—'}</td>
-                  <td className="table-cell text-center">{item.qty}</td>
+                  <td className="table-cell text-center">{item.qty}{item.is_loose ? ' tab' : ''}</td>
                   <td className="table-cell text-right">{formatINR(Number(item.unit_price))}</td>
                   <td className="table-cell text-center">{item.gst_percent}%</td>
                   <td className="table-cell text-right">{formatINR(Number(item.gst_amount))}</td>
@@ -215,6 +220,19 @@ export default function BillDetailPage() {
               <span>Grand Total</span>
               <span>{formatINR(Number(bill.grand_total))}</span>
             </div>
+          </div>
+        </div>
+
+        {/* Signature */}
+        <div className="flex justify-between items-end pt-8 mt-4 border-t border-dashed border-gray-200">
+          <div className="text-center">
+            <div className="border-t border-gray-400 w-36 mb-1" />
+            <p className="text-xs text-gray-500">Customer Signature</p>
+          </div>
+          <div className="text-center">
+            <div className="border-t border-gray-400 w-36 mb-1" />
+            <p className="text-xs text-gray-500">Sign &amp; Stamp</p>
+            <p className="text-xs font-semibold text-gray-700">Registered Pharmacist</p>
           </div>
         </div>
       </div>

@@ -1,10 +1,11 @@
 {
-  "/api/bills/route": "app/api/bills/route.js",
+  "/api/reports/route": "app/api/reports/route.js",
+  "/api/supplier-returns/route": "app/api/supplier-returns/route.js",
   "/api/settings/route": "app/api/settings/route.js",
-  "/api/bills/[id]/route": "app/api/bills/[id]/route.js",
-  "/api/bills/[id]/pdf/route": "app/api/bills/[id]/pdf/route.js",
   "/settings/page": "app/settings/page.js",
-  "/bills/[id]/page": "app/bills/[id]/page.js",
-  "/bills/page": "app/bills/page.js",
-  "/page": "app/page.js"
+  "/returns/page": "app/returns/page.js",
+  "/returns/new/page": "app/returns/new/page.js",
+  "/returns/[id]/page": "app/returns/[id]/page.js",
+  "/page": "app/page.js",
+  "/medicines/page": "app/medicines/page.js"
 }

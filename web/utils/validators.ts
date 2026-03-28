@@ -20,6 +20,8 @@ export const medicineSchema = z.object({
   selling_price: z.coerce.number().positive('Selling price must be positive'),
   gst_percent: z.coerce.number().min(0).max(28).default(0),
   stock_qty: z.coerce.number().min(0, 'Stock cannot be negative').default(0),
+  packing: z.string().optional().default(''),
+  packing_qty: z.coerce.number().min(1, 'Must be at least 1').default(1),
   hsn: z.string().optional().default(''),
   rate: z.coerce.number().min(0, 'Rate cannot be negative').default(0),
   discount: z.coerce.number().min(0).max(100, 'Discount cannot exceed 100%').default(0),

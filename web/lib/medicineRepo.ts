@@ -44,6 +44,8 @@ export async function insertMedicine(medicine: Omit<Medicine, 'id'>): Promise<nu
     .input('selling_price', sql.Decimal(10, 2), medicine.selling_price)
     .input('gst_percent', sql.Decimal(5, 2), medicine.gst_percent)
     .input('stock_qty', sql.Int, medicine.stock_qty)
+    .input('packing', sql.NVarChar(100), medicine.packing || '')
+    .input('packing_qty', sql.Int, medicine.packing_qty ?? 1)
     .input('hsn', sql.NVarChar(50), medicine.hsn || '')
     .input('rate', sql.Decimal(10, 2), medicine.rate ?? 0)
     .input('discount', sql.Decimal(5, 2), medicine.discount ?? 0)
@@ -54,11 +56,11 @@ export async function insertMedicine(medicine: Omit<Medicine, 'id'>): Promise<nu
     .query(`
       INSERT INTO medicines
         (name, generic_name, batch_no, expiry_month, expiry_year, mrp, selling_price, gst_percent, stock_qty,
-         hsn, rate, discount, manufacture_name, [group], created_at, updated_at)
+         packing, packing_qty, hsn, rate, discount, manufacture_name, [group], created_at, updated_at)
       OUTPUT INSERTED.id
       VALUES
         (@name, @generic_name, @batch_no, @expiry_month, @expiry_year, @mrp, @selling_price, @gst_percent, @stock_qty,
-         @hsn, @rate, @discount, @manufacture_name, @group, @created_at, @updated_at)
+         @packing, @packing_qty, @hsn, @rate, @discount, @manufacture_name, @group, @created_at, @updated_at)
     `);
   return result.recordset[0].id;
 }
@@ -78,6 +80,8 @@ export async function updateMedicine(medicine: Medicine): Promise<void> {
     .input('selling_price', sql.Decimal(10, 2), medicine.selling_price)
     .input('gst_percent', sql.Decimal(5, 2), medicine.gst_percent)
     .input('stock_qty', sql.Int, medicine.stock_qty)
+    .input('packing', sql.NVarChar(100), medicine.packing || '')
+    .input('packing_qty', sql.Int, medicine.packing_qty ?? 1)
     .input('hsn', sql.NVarChar(50), medicine.hsn || '')
     .input('rate', sql.Decimal(10, 2), medicine.rate ?? 0)
     .input('discount', sql.Decimal(5, 2), medicine.discount ?? 0)
@@ -89,7 +93,8 @@ export async function updateMedicine(medicine: Medicine): Promise<void> {
         name = @name, generic_name = @generic_name, batch_no = @batch_no,
         expiry_month = @expiry_month, expiry_year = @expiry_year,
         mrp = @mrp, selling_price = @selling_price, gst_percent = @gst_percent,
-        stock_qty = @stock_qty, hsn = @hsn, rate = @rate, discount = @discount,
+        stock_qty = @stock_qty, packing = @packing, packing_qty = @packing_qty,
+        hsn = @hsn, rate = @rate, discount = @discount,
         manufacture_name = @manufacture_name, [group] = @group, updated_at = @updated_at
       WHERE id = @id
     `);

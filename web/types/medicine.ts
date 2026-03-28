@@ -9,6 +9,8 @@ export interface Medicine {
   selling_price: number;
   gst_percent: number;
   stock_qty: number;
+  packing: string;
+  packing_qty: number;
   hsn: string;
   rate: number;
   discount: number;

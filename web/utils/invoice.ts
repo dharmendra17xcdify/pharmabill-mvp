@@ -11,15 +11,15 @@ export function buildInvoiceHTML(
     .map(
       (item, i) => `
     <tr>
-      <td>${i + 1}</td>
+      <td style="text-align:center">${i + 1}</td>
       <td>
-        <strong>${item.medicine_name}</strong>
+        <strong>${item.medicine_name}</strong>${item.is_loose ? ' <span style="font-size:10px;background:#FFF3E0;color:#E65100;border:1px solid #FFB74D;border-radius:3px;padding:1px 4px;">Loose</span>' : ''}
         ${item.batch_no ? `<br/><small>Batch: ${item.batch_no}</small>` : ''}
       </td>
       <td>${item.hsn || ''}</td>
       <td style="text-align:center">${item.expiry_month && item.expiry_year ? `${String(item.expiry_month).padStart(2, '0')}/${item.expiry_year}` : ''}</td>
       <td>${item.manufacture_name || ''}</td>
-      <td style="text-align:center">${item.qty}</td>
+      <td style="text-align:center">${item.qty}${item.is_loose ? ' tab' : ''}</td>
       <td style="text-align:right">₹${Number(item.unit_price).toFixed(2)}</td>
       <td style="text-align:center">${item.gst_percent}%</td>
       <td style="text-align:right">₹${Number(item.gst_amount).toFixed(2)}</td>
@@ -50,14 +50,18 @@ export function buildInvoiceHTML(
     .divider { border: none; border-top: 1px dashed #aaa; margin: 10px 0; }
     .bill-meta { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 12px; }
     table { width: 100%; border-collapse: collapse; margin: 12px 0; }
-    th { background: #1565C0; color: white; padding: 6px 4px; font-size: 11px; }
+    th { background: #1565C0; color: white; padding: 6px 4px; font-size: 11px; text-align: left; }
     td { padding: 5px 4px; border-bottom: 1px solid #eee; vertical-align: top; font-size: 12px; }
     tr:nth-child(even) td { background: #F5F5F5; }
     .totals { margin-top: 8px; float: right; min-width: 220px; }
     .totals table { font-size: 13px; }
     .totals td { border: none; padding: 3px 6px; }
     .totals .grand { font-size: 15px; font-weight: bold; color: #1565C0; border-top: 2px solid #1565C0; }
-    .footer { clear: both; margin-top: 30px; text-align: center; font-size: 11px; color: #888; }
+    .footer { clear: both; margin-top: 20px; text-align: center; font-size: 11px; color: #888; }
+    .signature-row { clear: both; display: flex; justify-content: space-between; align-items: flex-end; margin-top: 48px; padding-top: 8px; }
+    .signature-box { text-align: center; }
+    .signature-line { border-top: 1px solid #555; width: 160px; margin: 0 auto 4px; }
+    .signature-label { font-size: 11px; color: #444; }
     .payment-badge { display: inline-block; background: #E3F2FD; color: #1565C0; padding: 3px 10px; border-radius: 4px; font-weight: bold; margin-top: 4px; }
     @media print { body { padding: 0; } }
   </style>
@@ -87,7 +91,16 @@ export function buildInvoiceHTML(
   <table>
     <thead>
       <tr>
-        <th>#</th><th>Medicine</th><th>HSN</th><th>Expiry</th><th>Manufacturer</th><th>Qty</th><th>Rate</th><th>GST%</th><th>GST Amt</th><th>Total</th>
+        <th style="text-align:center;width:28px">#</th>
+        <th>Medicine</th>
+        <th style="width:70px">HSN</th>
+        <th style="text-align:center;width:60px">Expiry</th>
+        <th>Manufacturer</th>
+        <th style="text-align:center;width:36px">Qty</th>
+        <th style="text-align:right;width:72px">Rate</th>
+        <th style="text-align:center;width:40px">GST%</th>
+        <th style="text-align:right;width:64px">GST Amt</th>
+        <th style="text-align:right;width:72px">Total</th>
       </tr>
     </thead>
     <tbody>${itemRows}</tbody>
@@ -99,6 +112,17 @@ export function buildInvoiceHTML(
       ${Number(bill.discount_total) > 0 ? `<tr><td>Discount${Number(bill.discount_percent) > 0 ? ` (${Number(bill.discount_percent)}%)` : ''}</td><td style="text-align:right">- ₹${Number(bill.discount_total).toFixed(2)}</td></tr>` : ''}
       <tr class="grand"><td><strong>Grand Total</strong></td><td style="text-align:right"><strong>₹${Number(bill.grand_total).toFixed(2)}</strong></td></tr>
     </table>
+  </div>
+  <div class="signature-row">
+    <div class="signature-box">
+      <div class="signature-line"></div>
+      <div class="signature-label">Customer Signature</div>
+    </div>
+    <div class="signature-box">
+      <div class="signature-line"></div>
+      <div class="signature-label">Sign &amp; Stamp</div>
+      <div class="signature-label"><strong>Registered Pharmacist</strong></div>
+    </div>
   </div>
   <div class="footer">
     <p>Thank you for visiting ${settings.store_name}!</p>

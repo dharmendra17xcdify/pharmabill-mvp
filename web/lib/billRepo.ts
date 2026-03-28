@@ -58,6 +58,7 @@ export async function saveBill(
         .input(`expiry_month_${i}`, sql.Int, item.expiry_month ?? null)
         .input(`expiry_year_${i}`, sql.Int, item.expiry_year ?? null)
         .input(`manufacture_name_${i}`, sql.NVarChar(255), item.manufacture_name || '')
+        .input(`is_loose_${i}`, sql.Bit, item.is_loose ? 1 : 0)
         .input(`qty_${i}`, sql.Int, item.qty)
         .input(`unit_price_${i}`, sql.Decimal(10, 2), item.unit_price)
         .input(`gst_percent_${i}`, sql.Decimal(5, 2), item.gst_percent)
@@ -65,9 +66,9 @@ export async function saveBill(
         .input(`line_total_${i}`, sql.Decimal(10, 2), item.line_total)
         .query(`
           INSERT INTO bill_items
-            (bill_id, medicine_id, medicine_name, batch_no, hsn, expiry_month, expiry_year, manufacture_name, qty, unit_price, gst_percent, gst_amount, line_total)
+            (bill_id, medicine_id, medicine_name, batch_no, hsn, expiry_month, expiry_year, manufacture_name, is_loose, qty, unit_price, gst_percent, gst_amount, line_total)
           VALUES
-            (@bill_id_${i}, @medicine_id_${i}, @medicine_name_${i}, @batch_no_${i}, @hsn_${i}, @expiry_month_${i}, @expiry_year_${i}, @manufacture_name_${i}, @qty_${i}, @unit_price_${i}, @gst_percent_${i}, @gst_amount_${i}, @line_total_${i})
+            (@bill_id_${i}, @medicine_id_${i}, @medicine_name_${i}, @batch_no_${i}, @hsn_${i}, @expiry_month_${i}, @expiry_year_${i}, @manufacture_name_${i}, @is_loose_${i}, @qty_${i}, @unit_price_${i}, @gst_percent_${i}, @gst_amount_${i}, @line_total_${i})
         `);
 
       await new sql.Request(transaction)

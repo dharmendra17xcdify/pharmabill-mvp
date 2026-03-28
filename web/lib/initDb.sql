@@ -27,6 +27,8 @@ CREATE TABLE medicines (
   selling_price    DECIMAL(10,2)  NOT NULL,
   gst_percent      DECIMAL(5,2)   NOT NULL DEFAULT 0,
   stock_qty        INT            NOT NULL DEFAULT 0,
+  packing          NVARCHAR(100)  NOT NULL DEFAULT '',
+  packing_qty      INT            NOT NULL DEFAULT 1,
   hsn              NVARCHAR(50)   NOT NULL DEFAULT '',
   rate             DECIMAL(10,2)  NOT NULL DEFAULT 0,
   discount         DECIMAL(5,2)   NOT NULL DEFAULT 0,
@@ -37,6 +39,10 @@ CREATE TABLE medicines (
 );
 
 -- Add new columns to existing medicines table (idempotent)
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('medicines') AND name = 'packing')
+  ALTER TABLE medicines ADD packing NVARCHAR(100) NOT NULL DEFAULT '';
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('medicines') AND name = 'packing_qty')
+  ALTER TABLE medicines ADD packing_qty INT NOT NULL DEFAULT 1;
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('medicines') AND name = 'hsn')
   ALTER TABLE medicines ADD hsn NVARCHAR(50) NOT NULL DEFAULT '';
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('medicines') AND name = 'rate')
@@ -100,6 +106,8 @@ IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('bill_items
   ALTER TABLE bill_items ADD expiry_year INT NULL;
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('bill_items') AND name = 'manufacture_name')
   ALTER TABLE bill_items ADD manufacture_name NVARCHAR(255) NOT NULL DEFAULT '';
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('bill_items') AND name = 'is_loose')
+  ALTER TABLE bill_items ADD is_loose BIT NOT NULL DEFAULT 0;
 
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='app_meta' AND xtype='U')
 CREATE TABLE app_meta (
@@ -110,3 +118,113 @@ CREATE TABLE app_meta (
 -- Seed the invoice counter
 IF NOT EXISTS (SELECT 1 FROM app_meta WHERE [key] = 'last_invoice_number')
   INSERT INTO app_meta ([key], value) VALUES ('last_invoice_number', '0');
+
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='purchases' AND xtype='U')
+CREATE TABLE purchases (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  purchase_number NVARCHAR(50) NOT NULL,
+  supplier_name NVARCHAR(255) NOT NULL DEFAULT '',
+  supplier_invoice_no NVARCHAR(100) NOT NULL DEFAULT '',
+  supplier_gstin NVARCHAR(50) NOT NULL DEFAULT '',
+  supplier_address NVARCHAR(500) NOT NULL DEFAULT '',
+  supplier_phone NVARCHAR(50) NOT NULL DEFAULT '',
+  supplier_drug_license NVARCHAR(100) NOT NULL DEFAULT '',
+  subtotal DECIMAL(10,2) NOT NULL DEFAULT 0,
+  cgst_total DECIMAL(10,2) NOT NULL DEFAULT 0,
+  sgst_total DECIMAL(10,2) NOT NULL DEFAULT 0,
+  discount_total DECIMAL(10,2) NOT NULL DEFAULT 0,
+  grand_total DECIMAL(10,2) NOT NULL DEFAULT 0,
+  payment_mode NVARCHAR(20) NOT NULL DEFAULT 'Cash',
+  created_at NVARCHAR(50) NOT NULL DEFAULT ''
+);
+
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='purchase_items' AND xtype='U')
+CREATE TABLE purchase_items (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  purchase_id INT NOT NULL REFERENCES purchases(id),
+  medicine_id INT NULL,
+  medicine_name NVARCHAR(255) NOT NULL DEFAULT '',
+  hsn NVARCHAR(50) NOT NULL DEFAULT '',
+  batch_no NVARCHAR(100) NOT NULL DEFAULT '',
+  expiry_month INT NULL,
+  expiry_year INT NULL,
+  packing NVARCHAR(100) NOT NULL DEFAULT '',
+  pack_qty INT NOT NULL DEFAULT 1,
+  qty INT NOT NULL DEFAULT 0,
+  deal_qty INT NOT NULL DEFAULT 0,
+  rate DECIMAL(10,2) NOT NULL DEFAULT 0,
+  discount DECIMAL(5,2) NOT NULL DEFAULT 0,
+  cgst_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+  sgst_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+  cgst_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+  sgst_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+  taxable_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+  amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+  mrp DECIMAL(10,2) NOT NULL DEFAULT 0,
+  manufacture_name NVARCHAR(255) NOT NULL DEFAULT ''
+);
+
+-- Add new supplier columns to existing purchases table
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('purchases') AND name = 'supplier_address')
+  ALTER TABLE purchases ADD supplier_address NVARCHAR(500) NOT NULL DEFAULT '';
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('purchases') AND name = 'supplier_phone')
+  ALTER TABLE purchases ADD supplier_phone NVARCHAR(50) NOT NULL DEFAULT '';
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('purchases') AND name = 'supplier_drug_license')
+  ALTER TABLE purchases ADD supplier_drug_license NVARCHAR(100) NOT NULL DEFAULT '';
+
+-- Add hsn to existing purchase_items table
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('purchase_items') AND name = 'hsn')
+  ALTER TABLE purchase_items ADD hsn NVARCHAR(50) NOT NULL DEFAULT '';
+
+IF NOT EXISTS (SELECT 1 FROM app_meta WHERE [key] = 'last_purchase_number')
+  INSERT INTO app_meta ([key], value) VALUES ('last_purchase_number', '0');
+
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='supplier_returns' AND xtype='U')
+CREATE TABLE supplier_returns (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  return_number NVARCHAR(50) NOT NULL,
+  supplier_name NVARCHAR(255) NOT NULL DEFAULT '',
+  supplier_invoice_no NVARCHAR(100) NOT NULL DEFAULT '',
+  credit_note_no NVARCHAR(100) NOT NULL DEFAULT '',
+  supplier_gstin NVARCHAR(50) NOT NULL DEFAULT '',
+  supplier_phone NVARCHAR(50) NOT NULL DEFAULT '',
+  subtotal DECIMAL(10,2) NOT NULL DEFAULT 0,
+  cgst_total DECIMAL(10,2) NOT NULL DEFAULT 0,
+  sgst_total DECIMAL(10,2) NOT NULL DEFAULT 0,
+  grand_total DECIMAL(10,2) NOT NULL DEFAULT 0,
+  created_at NVARCHAR(50) NOT NULL DEFAULT ''
+);
+
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='supplier_return_items' AND xtype='U')
+CREATE TABLE supplier_return_items (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  return_id INT NOT NULL REFERENCES supplier_returns(id),
+  medicine_id INT NULL,
+  medicine_name NVARCHAR(255) NOT NULL DEFAULT '',
+  hsn NVARCHAR(50) NOT NULL DEFAULT '',
+  batch_no NVARCHAR(100) NOT NULL DEFAULT '',
+  expiry_month INT NULL,
+  expiry_year INT NULL,
+  packing NVARCHAR(100) NOT NULL DEFAULT '',
+  qty INT NOT NULL DEFAULT 0,
+  rate DECIMAL(10,2) NOT NULL DEFAULT 0,
+  discount DECIMAL(5,2) NOT NULL DEFAULT 0,
+  cgst_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+  sgst_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+  cgst_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+  sgst_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+  taxable_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+  amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+  mrp DECIMAL(10,2) NOT NULL DEFAULT 0,
+  manufacture_name NVARCHAR(255) NOT NULL DEFAULT '',
+  return_reason NVARCHAR(100) NOT NULL DEFAULT 'Expired'
+);
+
+IF NOT EXISTS (SELECT 1 FROM app_meta WHERE [key] = 'last_return_number')
+  INSERT INTO app_meta ([key], value) VALUES ('last_return_number', '0');
+
+-- Add address and drug license to existing supplier_returns table
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('supplier_returns') AND name = 'supplier_address')
+  ALTER TABLE supplier_returns ADD supplier_address NVARCHAR(500) NOT NULL DEFAULT '';
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('supplier_returns') AND name = 'supplier_drug_license')
+  ALTER TABLE supplier_returns ADD supplier_drug_license NVARCHAR(100) NOT NULL DEFAULT '';
