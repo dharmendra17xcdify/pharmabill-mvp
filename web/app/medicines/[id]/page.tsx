@@ -37,6 +37,11 @@ export default function EditMedicinePage() {
         selling_price: m.selling_price,
         gst_percent: m.gst_percent,
         stock_qty: m.stock_qty,
+        hsn: m.hsn ?? '',
+        rate: m.rate ?? 0,
+        discount: m.discount ?? 0,
+        manufacture_name: m.manufacture_name ?? '',
+        group: m.group ?? '',
       });
     }
   }, [medicines, id]);
@@ -49,6 +54,11 @@ export default function EditMedicinePage() {
       batch_no: data.batch_no ?? '',
       expiry_month: data.expiry_month ?? null,
       expiry_year: data.expiry_year ?? null,
+      hsn: data.hsn ?? '',
+      rate: data.rate ?? 0,
+      discount: data.discount ?? 0,
+      manufacture_name: data.manufacture_name ?? '',
+      group: data.group ?? '',
     });
     router.push('/medicines');
   };
@@ -105,6 +115,29 @@ export default function EditMedicinePage() {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Manufacture Name</label>
+              <input className="input" {...register('manufacture_name')} />
+            </div>
+            <div>
+              <label className="label">Group</label>
+              <input className="input" {...register('group')} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">HSN Code</label>
+              <input className="input" {...register('hsn')} />
+            </div>
+            <div>
+              <label className="label">Rate (₹)</label>
+              <input className="input" type="number" step="0.01" {...register('rate')} />
+              {errors.rate && <p className="error-text">{errors.rate.message}</p>}
+            </div>
+          </div>
+
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="label">MRP (₹) *</label>
@@ -117,9 +150,15 @@ export default function EditMedicinePage() {
               {errors.selling_price && <p className="error-text">{errors.selling_price.message}</p>}
             </div>
             <div>
-              <label className="label">Stock Qty</label>
-              <input className="input" type="number" min={0} {...register('stock_qty')} />
+              <label className="label">Discount %</label>
+              <input className="input" type="number" step="0.01" min={0} max={100} {...register('discount')} />
+              {errors.discount && <p className="error-text">{errors.discount.message}</p>}
             </div>
+          </div>
+
+          <div>
+            <label className="label">Stock Qty</label>
+            <input className="input" type="number" min={0} {...register('stock_qty')} />
           </div>
 
           <div className="flex gap-3 pt-2">

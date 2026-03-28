@@ -17,47 +17,89 @@ CREATE TABLE store_settings (
 
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='medicines' AND xtype='U')
 CREATE TABLE medicines (
-  id            INT IDENTITY(1,1) PRIMARY KEY,
-  name          NVARCHAR(255)  NOT NULL,
-  generic_name  NVARCHAR(255)  NOT NULL DEFAULT '',
-  batch_no      NVARCHAR(100)  NOT NULL DEFAULT '',
-  expiry_month  INT            NULL,
-  expiry_year   INT            NULL,
-  mrp           DECIMAL(10,2)  NOT NULL,
-  selling_price DECIMAL(10,2)  NOT NULL,
-  gst_percent   DECIMAL(5,2)   NOT NULL DEFAULT 0,
-  stock_qty     INT            NOT NULL DEFAULT 0,
-  created_at    NVARCHAR(50),
-  updated_at    NVARCHAR(50)
+  id               INT IDENTITY(1,1) PRIMARY KEY,
+  name             NVARCHAR(255)  NOT NULL,
+  generic_name     NVARCHAR(255)  NOT NULL DEFAULT '',
+  batch_no         NVARCHAR(100)  NOT NULL DEFAULT '',
+  expiry_month     INT            NULL,
+  expiry_year      INT            NULL,
+  mrp              DECIMAL(10,2)  NOT NULL,
+  selling_price    DECIMAL(10,2)  NOT NULL,
+  gst_percent      DECIMAL(5,2)   NOT NULL DEFAULT 0,
+  stock_qty        INT            NOT NULL DEFAULT 0,
+  hsn              NVARCHAR(50)   NOT NULL DEFAULT '',
+  rate             DECIMAL(10,2)  NOT NULL DEFAULT 0,
+  discount         DECIMAL(5,2)   NOT NULL DEFAULT 0,
+  manufacture_name NVARCHAR(255)  NOT NULL DEFAULT '',
+  [group]          NVARCHAR(100)  NOT NULL DEFAULT '',
+  created_at       NVARCHAR(50),
+  updated_at       NVARCHAR(50)
 );
+
+-- Add new columns to existing medicines table (idempotent)
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('medicines') AND name = 'hsn')
+  ALTER TABLE medicines ADD hsn NVARCHAR(50) NOT NULL DEFAULT '';
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('medicines') AND name = 'rate')
+  ALTER TABLE medicines ADD rate DECIMAL(10,2) NOT NULL DEFAULT 0;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('medicines') AND name = 'discount')
+  ALTER TABLE medicines ADD discount DECIMAL(5,2) NOT NULL DEFAULT 0;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('medicines') AND name = 'manufacture_name')
+  ALTER TABLE medicines ADD manufacture_name NVARCHAR(255) NOT NULL DEFAULT '';
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('medicines') AND name = 'group')
+  ALTER TABLE medicines ADD [group] NVARCHAR(100) NOT NULL DEFAULT '';
 
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='bills' AND xtype='U')
 CREATE TABLE bills (
   id             INT IDENTITY(1,1) PRIMARY KEY,
   bill_number    NVARCHAR(50)   NOT NULL UNIQUE,
-  customer_name  NVARCHAR(255)  NOT NULL DEFAULT '',
-  customer_phone NVARCHAR(50)   NOT NULL DEFAULT '',
-  subtotal       DECIMAL(10,2)  NOT NULL DEFAULT 0,
-  gst_total      DECIMAL(10,2)  NOT NULL DEFAULT 0,
-  discount_total DECIMAL(10,2)  NOT NULL DEFAULT 0,
+  customer_name    NVARCHAR(255)  NOT NULL DEFAULT '',
+  customer_phone   NVARCHAR(50)   NOT NULL DEFAULT '',
+  customer_address NVARCHAR(500)  NOT NULL DEFAULT '',
+  doctor_name      NVARCHAR(255)  NOT NULL DEFAULT '',
+  subtotal         DECIMAL(10,2)  NOT NULL DEFAULT 0,
+  gst_total        DECIMAL(10,2)  NOT NULL DEFAULT 0,
+  discount_percent DECIMAL(5,2)   NOT NULL DEFAULT 0,
+  discount_total   DECIMAL(10,2)  NOT NULL DEFAULT 0,
   grand_total    DECIMAL(10,2)  NOT NULL DEFAULT 0,
   payment_mode   NVARCHAR(20)   NOT NULL DEFAULT 'Cash',
   created_at     NVARCHAR(50)
 );
 
+-- Add new columns to existing bills table
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('bills') AND name = 'doctor_name')
+  ALTER TABLE bills ADD doctor_name NVARCHAR(255) NOT NULL DEFAULT '';
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('bills') AND name = 'discount_percent')
+  ALTER TABLE bills ADD discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('bills') AND name = 'customer_address')
+  ALTER TABLE bills ADD customer_address NVARCHAR(500) NOT NULL DEFAULT '';
+
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='bill_items' AND xtype='U')
 CREATE TABLE bill_items (
-  id             INT IDENTITY(1,1) PRIMARY KEY,
-  bill_id        INT            NOT NULL REFERENCES bills(id),
-  medicine_id    INT,
-  medicine_name  NVARCHAR(255)  NOT NULL,
-  batch_no       NVARCHAR(100)  NOT NULL DEFAULT '',
-  qty            INT            NOT NULL,
-  unit_price     DECIMAL(10,2)  NOT NULL,
-  gst_percent    DECIMAL(5,2)   NOT NULL DEFAULT 0,
-  gst_amount     DECIMAL(10,2)  NOT NULL DEFAULT 0,
-  line_total     DECIMAL(10,2)  NOT NULL
+  id               INT IDENTITY(1,1) PRIMARY KEY,
+  bill_id          INT            NOT NULL REFERENCES bills(id),
+  medicine_id      INT,
+  medicine_name    NVARCHAR(255)  NOT NULL,
+  batch_no         NVARCHAR(100)  NOT NULL DEFAULT '',
+  hsn              NVARCHAR(50)   NOT NULL DEFAULT '',
+  expiry_month     INT            NULL,
+  expiry_year      INT            NULL,
+  manufacture_name NVARCHAR(255)  NOT NULL DEFAULT '',
+  qty              INT            NOT NULL,
+  unit_price       DECIMAL(10,2)  NOT NULL,
+  gst_percent      DECIMAL(5,2)   NOT NULL DEFAULT 0,
+  gst_amount       DECIMAL(10,2)  NOT NULL DEFAULT 0,
+  line_total       DECIMAL(10,2)  NOT NULL
 );
+
+-- Add new columns to existing bill_items table
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('bill_items') AND name = 'hsn')
+  ALTER TABLE bill_items ADD hsn NVARCHAR(50) NOT NULL DEFAULT '';
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('bill_items') AND name = 'expiry_month')
+  ALTER TABLE bill_items ADD expiry_month INT NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('bill_items') AND name = 'expiry_year')
+  ALTER TABLE bill_items ADD expiry_year INT NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('bill_items') AND name = 'manufacture_name')
+  ALTER TABLE bill_items ADD manufacture_name NVARCHAR(255) NOT NULL DEFAULT '';
 
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='app_meta' AND xtype='U')
 CREATE TABLE app_meta (

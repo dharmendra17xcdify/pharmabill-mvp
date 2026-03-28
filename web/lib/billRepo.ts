@@ -28,18 +28,21 @@ export async function saveBill(
       .input('bill_number', sql.NVarChar(50), bill.bill_number)
       .input('customer_name', sql.NVarChar(255), bill.customer_name || '')
       .input('customer_phone', sql.NVarChar(50), bill.customer_phone || '')
+      .input('customer_address', sql.NVarChar(500), bill.customer_address || '')
+      .input('doctor_name', sql.NVarChar(255), bill.doctor_name || '')
       .input('subtotal', sql.Decimal(10, 2), bill.subtotal)
       .input('gst_total', sql.Decimal(10, 2), bill.gst_total)
+      .input('discount_percent', sql.Decimal(5, 2), bill.discount_percent ?? 0)
       .input('discount_total', sql.Decimal(10, 2), bill.discount_total)
       .input('grand_total', sql.Decimal(10, 2), bill.grand_total)
       .input('payment_mode', sql.NVarChar(20), bill.payment_mode)
       .input('created_at', sql.NVarChar(50), bill.created_at)
       .query(`
         INSERT INTO bills
-          (bill_number, customer_name, customer_phone, subtotal, gst_total, discount_total, grand_total, payment_mode, created_at)
+          (bill_number, customer_name, customer_phone, customer_address, doctor_name, subtotal, gst_total, discount_percent, discount_total, grand_total, payment_mode, created_at)
         OUTPUT INSERTED.id
         VALUES
-          (@bill_number, @customer_name, @customer_phone, @subtotal, @gst_total, @discount_total, @grand_total, @payment_mode, @created_at)
+          (@bill_number, @customer_name, @customer_phone, @customer_address, @doctor_name, @subtotal, @gst_total, @discount_percent, @discount_total, @grand_total, @payment_mode, @created_at)
       `);
 
     const billId: number = billResult.recordset[0].id;
@@ -51,6 +54,10 @@ export async function saveBill(
         .input(`medicine_id_${i}`, sql.Int, item.medicine_id)
         .input(`medicine_name_${i}`, sql.NVarChar(255), item.medicine_name)
         .input(`batch_no_${i}`, sql.NVarChar(100), item.batch_no || '')
+        .input(`hsn_${i}`, sql.NVarChar(50), item.hsn || '')
+        .input(`expiry_month_${i}`, sql.Int, item.expiry_month ?? null)
+        .input(`expiry_year_${i}`, sql.Int, item.expiry_year ?? null)
+        .input(`manufacture_name_${i}`, sql.NVarChar(255), item.manufacture_name || '')
         .input(`qty_${i}`, sql.Int, item.qty)
         .input(`unit_price_${i}`, sql.Decimal(10, 2), item.unit_price)
         .input(`gst_percent_${i}`, sql.Decimal(5, 2), item.gst_percent)
@@ -58,9 +65,9 @@ export async function saveBill(
         .input(`line_total_${i}`, sql.Decimal(10, 2), item.line_total)
         .query(`
           INSERT INTO bill_items
-            (bill_id, medicine_id, medicine_name, batch_no, qty, unit_price, gst_percent, gst_amount, line_total)
+            (bill_id, medicine_id, medicine_name, batch_no, hsn, expiry_month, expiry_year, manufacture_name, qty, unit_price, gst_percent, gst_amount, line_total)
           VALUES
-            (@bill_id_${i}, @medicine_id_${i}, @medicine_name_${i}, @batch_no_${i}, @qty_${i}, @unit_price_${i}, @gst_percent_${i}, @gst_amount_${i}, @line_total_${i})
+            (@bill_id_${i}, @medicine_id_${i}, @medicine_name_${i}, @batch_no_${i}, @hsn_${i}, @expiry_month_${i}, @expiry_year_${i}, @manufacture_name_${i}, @qty_${i}, @unit_price_${i}, @gst_percent_${i}, @gst_amount_${i}, @line_total_${i})
         `);
 
       await new sql.Request(transaction)

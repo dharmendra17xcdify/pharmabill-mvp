@@ -4,6 +4,10 @@ export interface BillItem {
   medicine_id: number;
   medicine_name: string;
   batch_no: string;
+  hsn: string;
+  expiry_month: number | null;
+  expiry_year: number | null;
+  manufacture_name: string;
   qty: number;
   unit_price: number;
   gst_percent: number;
@@ -16,8 +20,11 @@ export interface Bill {
   bill_number: string;
   customer_name: string;
   customer_phone: string;
+  customer_address: string;
+  doctor_name: string;
   subtotal: number;
   gst_total: number;
+  discount_percent: number;
   discount_total: number;
   grand_total: number;
   payment_mode: string;
@@ -29,6 +36,10 @@ export interface CartItem {
   medicine_id: number;
   medicine_name: string;
   batch_no: string;
+  hsn: string;
+  expiry_month: number | null;
+  expiry_year: number | null;
+  manufacture_name: string;
   qty: number;
   unit_price: number;
   mrp: number;

@@ -1,6 +1,10 @@
 {
-  "/api/auth/login/route": "app/api/auth/login/route.js",
-  "/api/reports/route": "app/api/reports/route.js",
-  "/login/page": "app/login/page.js",
+  "/api/bills/route": "app/api/bills/route.js",
+  "/api/settings/route": "app/api/settings/route.js",
+  "/api/bills/[id]/route": "app/api/bills/[id]/route.js",
+  "/api/bills/[id]/pdf/route": "app/api/bills/[id]/pdf/route.js",
+  "/settings/page": "app/settings/page.js",
+  "/bills/[id]/page": "app/bills/[id]/page.js",
+  "/bills/page": "app/bills/page.js",
   "/page": "app/page.js"
 }

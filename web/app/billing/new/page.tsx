@@ -16,6 +16,9 @@ export default function NewBillPage() {
   const [results, setResults] = useState<Medicine[]>([]);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [doctorName, setDoctorName] = useState('');
+  const [discountPercent, setDiscountPercent] = useState(0);
   const [paymentMode, setPaymentMode] = useState('Cash');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [qtyInputs, setQtyInputs] = useState<Record<number, number>>({});
@@ -40,9 +43,12 @@ export default function NewBillPage() {
   };
 
   const { subtotal, gstTotal, grandTotal } = computeTotals();
+  const discountAmt = parseFloat((grandTotal * discountPercent / 100).toFixed(2));
+  const finalTotal = parseFloat((grandTotal - discountAmt).toFixed(2));
 
   const handleSubmit = async () => {
     if (cartItems.length === 0) return alert('Cart is empty');
+    if (discountPercent < 0 || discountPercent > 100) return alert('Discount must be between 0% and 100%');
     setIsSubmitting(true);
     try {
       const res = await fetch('/api/bills', {
@@ -52,10 +58,13 @@ export default function NewBillPage() {
           bill: {
             customer_name: customerName,
             customer_phone: customerPhone,
+            customer_address: customerAddress,
+            doctor_name: doctorName,
             subtotal,
             gst_total: gstTotal,
-            discount_total: 0,
-            grand_total: grandTotal,
+            discount_percent: discountPercent,
+            discount_total: discountAmt,
+            grand_total: finalTotal,
             payment_mode: paymentMode,
           },
           items: cartItems,
@@ -141,6 +150,14 @@ export default function NewBillPage() {
               </div>
             </div>
             <div>
+              <label className="label">Address</label>
+              <input className="input" placeholder="Optional" value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Doctor Name</label>
+              <input className="input" placeholder="Optional" value={doctorName} onChange={e => setDoctorName(e.target.value)} />
+            </div>
+            <div>
               <label className="label">Payment Mode</label>
               <div className="flex gap-2">
                 {PAYMENT_MODES.map(mode => (
@@ -213,8 +230,25 @@ export default function NewBillPage() {
             <div className="flex justify-between text-sm text-gray-600">
               <span>GST Total</span><span>{formatINR(gstTotal)}</span>
             </div>
+            <div className="flex items-center justify-between text-sm text-gray-600 border-t pt-2">
+              <span>Discount %</span>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.01"
+                  value={discountPercent || ''}
+                  onChange={e => setDiscountPercent(parseFloat(e.target.value) || 0)}
+                  className="input w-20 text-right text-sm py-1"
+                  placeholder="0"
+                />
+                <span className="text-gray-500">%</span>
+                {discountAmt > 0 && <span className="text-xs text-success ml-1">− {formatINR(discountAmt)}</span>}
+              </div>
+            </div>
             <div className="flex justify-between text-base font-bold text-primary border-t pt-2">
-              <span>Grand Total</span><span>{formatINR(grandTotal)}</span>
+              <span>Grand Total</span><span>{formatINR(finalTotal)}</span>
             </div>
 
             <button

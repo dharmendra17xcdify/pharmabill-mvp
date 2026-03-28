@@ -16,6 +16,7 @@ export default function BillDetailPage() {
   const [bill, setBill] = useState<(Bill & { items: BillItem[] }) | null>(null);
   const [settings, setSettings] = useState<StoreSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -38,11 +39,58 @@ export default function BillDetailPage() {
     setTimeout(() => win.print(), 300);
   };
 
-  const handleWhatsApp = () => {
+  const fetchPDFBlob = async (): Promise<Blob> => {
+    const res = await fetch(`/api/bills/${id}/pdf`);
+    if (!res.ok) throw new Error('PDF generation failed');
+    return res.blob();
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!bill) return;
+    setPdfLoading(true);
+    try {
+      const blob = await fetchPDFBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${bill.bill_number}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const handleWhatsApp = async () => {
     if (!bill || !settings) return;
-    const message = buildWhatsAppMessage(bill, bill.items ?? [], settings);
-    const url = getWhatsAppUrl(message, bill.customer_phone);
-    window.open(url, '_blank', 'noopener,noreferrer');
+    setPdfLoading(true);
+    try {
+      const blob = await fetchPDFBlob();
+      const file = new File([blob], `${bill.bill_number}.pdf`, { type: 'application/pdf' });
+      const message = buildWhatsAppMessage(bill, bill.items ?? [], settings);
+
+      if (navigator.canShare?.({ files: [file] })) {
+        // Native share sheet — user picks WhatsApp (or any app)
+        await navigator.share({ files: [file], title: `Bill ${bill.bill_number}`, text: message });
+      } else {
+        // Fallback: download PDF + open WhatsApp text
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${bill.bill_number}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+        window.open(getWhatsAppUrl(message, bill.customer_phone), '_blank', 'noopener,noreferrer');
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        alert('Failed to share PDF. Please try again.');
+      }
+    } finally {
+      setPdfLoading(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -64,7 +112,12 @@ export default function BillDetailPage() {
           <h2 className="text-xl font-bold text-gray-800">Bill {bill.bill_number}</h2>
         </div>
         <div className="flex gap-2">
-          <button onClick={handleWhatsApp} className="btn-whatsapp text-sm">💬 WhatsApp</button>
+          <button onClick={handleWhatsApp} disabled={pdfLoading} className="btn-whatsapp text-sm">
+            {pdfLoading ? '⏳ Preparing…' : '💬 WhatsApp PDF'}
+          </button>
+          <button onClick={handleDownloadPDF} disabled={pdfLoading} className="btn-secondary text-sm">
+            {pdfLoading ? '⏳…' : '📄 Download PDF'}
+          </button>
           <button onClick={handlePrint} className="btn-secondary text-sm">🖨 Print</button>
           <button onClick={handleDelete} className="btn-danger text-sm">Delete</button>
         </div>
@@ -81,6 +134,13 @@ export default function BillDetailPage() {
                 <p className="text-gray-500 mt-2">Customer</p>
                 <p className="font-medium">{bill.customer_name}</p>
                 {bill.customer_phone && <p className="text-gray-500">{bill.customer_phone}</p>}
+                {bill.customer_address && <p className="text-gray-500 text-xs">{bill.customer_address}</p>}
+              </>
+            )}
+            {bill.doctor_name && (
+              <>
+                <p className="text-gray-500 mt-2">Doctor</p>
+                <p className="font-medium">{bill.doctor_name}</p>
               </>
             )}
           </div>
@@ -98,6 +158,9 @@ export default function BillDetailPage() {
               <tr>
                 <th className="table-header">#</th>
                 <th className="table-header">Medicine</th>
+                <th className="table-header">HSN</th>
+                <th className="table-header">Expiry</th>
+                <th className="table-header">Manufacturer</th>
                 <th className="table-header text-center">Qty</th>
                 <th className="table-header text-right">Rate</th>
                 <th className="table-header text-center">GST%</th>
@@ -113,6 +176,13 @@ export default function BillDetailPage() {
                     <div className="font-medium">{item.medicine_name}</div>
                     {item.batch_no && <div className="text-xs text-gray-400">Batch: {item.batch_no}</div>}
                   </td>
+                  <td className="table-cell text-xs text-gray-500">{item.hsn || '—'}</td>
+                  <td className="table-cell text-xs text-gray-500">
+                    {item.expiry_month && item.expiry_year
+                      ? `${String(item.expiry_month).padStart(2, '0')}/${item.expiry_year}`
+                      : '—'}
+                  </td>
+                  <td className="table-cell text-xs text-gray-500">{item.manufacture_name || '—'}</td>
                   <td className="table-cell text-center">{item.qty}</td>
                   <td className="table-cell text-right">{formatINR(Number(item.unit_price))}</td>
                   <td className="table-cell text-center">{item.gst_percent}%</td>
@@ -137,7 +207,7 @@ export default function BillDetailPage() {
             </div>
             {Number(bill.discount_total) > 0 && (
               <div className="flex justify-between text-success">
-                <span>Discount</span>
+                <span>Discount {Number(bill.discount_percent) > 0 ? `(${Number(bill.discount_percent)}%)` : ''}</span>
                 <span>- {formatINR(Number(bill.discount_total))}</span>
               </div>
             )}

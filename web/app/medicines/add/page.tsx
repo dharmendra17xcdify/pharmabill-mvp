@@ -16,7 +16,7 @@ export default function AddMedicinePage() {
     formState: { errors, isSubmitting },
   } = useForm<MedicineFormData>({
     resolver: zodResolver(medicineSchema),
-    defaultValues: { gst_percent: 0, stock_qty: 0 },
+    defaultValues: { gst_percent: 0, stock_qty: 0, rate: 0, discount: 0 },
   });
 
   const onSubmit = async (data: MedicineFormData) => {
@@ -26,6 +26,11 @@ export default function AddMedicinePage() {
       batch_no: data.batch_no ?? '',
       expiry_month: data.expiry_month ?? null,
       expiry_year: data.expiry_year ?? null,
+      hsn: data.hsn ?? '',
+      rate: data.rate ?? 0,
+      discount: data.discount ?? 0,
+      manufacture_name: data.manufacture_name ?? '',
+      group: data.group ?? '',
     });
     router.push('/medicines');
   };
@@ -78,6 +83,29 @@ export default function AddMedicinePage() {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Manufacture Name</label>
+              <input className="input" placeholder="e.g. Cipla Ltd" {...register('manufacture_name')} />
+            </div>
+            <div>
+              <label className="label">Group</label>
+              <input className="input" placeholder="e.g. Antibiotic" {...register('group')} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">HSN Code</label>
+              <input className="input" placeholder="e.g. 30049099" {...register('hsn')} />
+            </div>
+            <div>
+              <label className="label">Rate (₹)</label>
+              <input className="input" type="number" step="0.01" placeholder="0.00" {...register('rate')} />
+              {errors.rate && <p className="error-text">{errors.rate.message}</p>}
+            </div>
+          </div>
+
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="label">MRP (₹) *</label>
@@ -90,10 +118,16 @@ export default function AddMedicinePage() {
               {errors.selling_price && <p className="error-text">{errors.selling_price.message}</p>}
             </div>
             <div>
-              <label className="label">Stock Qty</label>
-              <input className="input" type="number" min={0} placeholder="0" {...register('stock_qty')} />
-              {errors.stock_qty && <p className="error-text">{errors.stock_qty.message}</p>}
+              <label className="label">Discount %</label>
+              <input className="input" type="number" step="0.01" min={0} max={100} placeholder="0.00" {...register('discount')} />
+              {errors.discount && <p className="error-text">{errors.discount.message}</p>}
             </div>
+          </div>
+
+          <div>
+            <label className="label">Stock Qty</label>
+            <input className="input" type="number" min={0} placeholder="0" {...register('stock_qty')} />
+            {errors.stock_qty && <p className="error-text">{errors.stock_qty.message}</p>}
           </div>
 
           <div className="flex gap-3 pt-2">

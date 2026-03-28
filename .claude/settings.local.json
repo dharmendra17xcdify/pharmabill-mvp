@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(xargs grep:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(powershell -Command \"Get-Service -Name ''MSSQL*'' | Select-Object Name, Status, DisplayName\")",
+      "Bash(powershell -Command \"netstat -ano | findstr '':1433''\")",
+      "Bash(powershell -Command \"netstat -ano | findstr ''LISTENING'' | findstr -i ''143''\")",
+      "Bash(powershell -Command \"& ''sqlcmd'' -S ''localhost'' -E -Q ''SELECT name FROM sys.databases WHERE name = N''''PharmaBill''''; SELECT name FROM sys.sql_logins WHERE name = N''''pharmabill'''';''\")",
+      "Bash(powershell -Command \"& sqlcmd -S ''localhost'' -E -d PharmaBill -Q \"\"SELECT name, TYPE_NAME\\(user_type_id\\) as type, max_length, is_nullable FROM sys.columns WHERE object_id = OBJECT_ID\\(''medicines''\\) ORDER BY column_id;\"\"\")",
+      "Bash(powershell -Command \"& sqlcmd -S ''localhost'' -E -d PharmaBill -Q \"\"IF NOT EXISTS \\(SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID\\(''bills''\\) AND name = ''discount_percent''\\) ALTER TABLE bills ADD discount_percent DECIMAL\\(5,2\\) NOT NULL DEFAULT 0;\"\"\")"
     ]
   }
 }

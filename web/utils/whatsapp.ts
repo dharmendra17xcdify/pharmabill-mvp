@@ -4,7 +4,8 @@ import { formatINR } from './currency';
 import { formatDateShort } from './date';
 
 export function buildWhatsAppMessage(
-  bill: Bill & { items: BillItem[] },
+  bill: Bill,
+  items: BillItem[],
   settings: StoreSettings
 ): string {
   const lines: string[] = [];
@@ -16,10 +17,12 @@ export function buildWhatsAppMessage(
   lines.push(`Bill No: *${bill.bill_number}*`);
   lines.push(`Date: ${formatDateShort(bill.created_at)}`);
   if (bill.customer_name) lines.push(`Customer: ${bill.customer_name}`);
+  if (bill.customer_address) lines.push(`Address: ${bill.customer_address}`);
+  if (bill.doctor_name) lines.push(`Doctor: ${bill.doctor_name}`);
   lines.push('');
 
   lines.push('*Items:*');
-  for (const item of bill.items) {
+  for (const item of items) {
     lines.push(`• ${item.medicine_name} × ${item.qty} = ${formatINR(Number(item.line_total))}`);
   }
   lines.push('');
@@ -27,7 +30,8 @@ export function buildWhatsAppMessage(
   if (Number(bill.discount_total) > 0) {
     lines.push(`Subtotal: ${formatINR(Number(bill.subtotal))}`);
     lines.push(`GST: ${formatINR(Number(bill.gst_total))}`);
-    lines.push(`Discount: -${formatINR(Number(bill.discount_total))}`);
+    const discPct = Number(bill.discount_percent) > 0 ? ` (${Number(bill.discount_percent)}%)` : '';
+    lines.push(`Discount${discPct}: -${formatINR(Number(bill.discount_total))}`);
   }
   lines.push(`*Total: ${formatINR(Number(bill.grand_total))}*`);
   lines.push(`Payment: ${bill.payment_mode}`);
@@ -37,11 +41,9 @@ export function buildWhatsAppMessage(
   return lines.join('\n');
 }
 
-export function getWhatsAppUrl(message: string, phone?: string): string {
+const STORE_WHATSAPP = '918108401991';
+
+export function getWhatsAppUrl(message: string, _phone?: string): string {
   const encoded = encodeURIComponent(message);
-  const digits = phone?.replace(/\D/g, '') ?? '';
-  const fullPhone = digits.length === 10 ? `91${digits}` : digits;
-  return fullPhone
-    ? `https://wa.me/${fullPhone}?text=${encoded}`
-    : `https://wa.me/?text=${encoded}`;
+  return `https://wa.me/${STORE_WHATSAPP}?text=${encoded}`;
 }
