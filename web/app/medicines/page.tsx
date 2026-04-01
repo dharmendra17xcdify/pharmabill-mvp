@@ -4,9 +4,10 @@ import Link from 'next/link';
 import { useMedicineStore } from '@/store/useMedicineStore';
 import { formatINR } from '@/utils/currency';
 import { formatExpiry, isExpired, isExpiringSoon } from '@/utils/date';
+import { LOW_STOCK_THRESHOLD } from '@/constants/paymentModes';
 
 export default function MedicinesPage() {
-  const { medicines, isLoading, loadMedicines, deleteMedicine } = useMedicineStore();
+  const { medicines, isLoading, loadMedicines, deleteMedicine, deleteBatch } = useMedicineStore();
   const [query, setQuery] = useState('');
 
   useEffect(() => { loadMedicines(); }, []);
@@ -19,16 +20,21 @@ export default function MedicinesPage() {
       )
     : medicines;
 
-  const handleDelete = async (id: number, name: string) => {
-    if (!confirm(`Delete "${name}"?`)) return;
-    await deleteMedicine(id);
+  const handleDelete = async (m: (typeof medicines)[0]) => {
+    if (m.batch_id) {
+      if (!confirm(`Delete batch "${m.batch_no || '(no batch)'}" of "${m.name}"?`)) return;
+      await deleteBatch(m.batch_id);
+    } else {
+      if (!confirm(`Delete "${m.name}" and all its batches?`)) return;
+      await deleteMedicine(m.id!);
+    }
   };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-800">Medicines</h2>
-        <Link href="/medicines/add" className="btn-primary text-sm">+ Add Medicine</Link>
+        <h2 className="text-xl font-bold text-gray-800">Item Master</h2>
+        <Link href="/medicines/add" className="btn-primary text-sm">+ Add Item</Link>
       </div>
 
       <div className="card">
@@ -59,12 +65,16 @@ export default function MedicinesPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(m => {
-                  const expired = isExpired(m.expiry_month, m.expiry_year);
+                {filtered.map((m, idx) => {
+                  const expired  = isExpired(m.expiry_month, m.expiry_year);
                   const expiring = isExpiringSoon(m.expiry_month, m.expiry_year);
-                  const lowStock = m.stock_qty <= 10;
+                  const lowStock = m.stock_qty <= LOW_STOCK_THRESHOLD;
+                  // Edit URL carries both medicine_id and batch_id so the edit page
+                  // knows which batch row to pre-fill.
+                  const editHref = `/medicines/${m.id}${m.batch_id ? `?batchId=${m.batch_id}` : ''}`;
+
                   return (
-                    <tr key={m.id} className="hover:bg-gray-50">
+                    <tr key={`${m.id}-${m.batch_id ?? idx}`} className="hover:bg-gray-50">
                       <td className="table-cell">
                         <div className="font-medium">{m.name}</div>
                         {m.generic_name && (
@@ -93,14 +103,11 @@ export default function MedicinesPage() {
                       </td>
                       <td className="table-cell">
                         <div className="flex gap-2">
-                          <Link
-                            href={`/medicines/${m.id}`}
-                            className="text-primary text-xs hover:underline"
-                          >
+                          <Link href={editHref} className="text-primary text-xs hover:underline">
                             Edit
                           </Link>
                           <button
-                            onClick={() => handleDelete(m.id!, m.name)}
+                            onClick={() => handleDelete(m)}
                             className="text-danger text-xs hover:underline"
                           >
                             Delete

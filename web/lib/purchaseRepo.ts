@@ -81,44 +81,115 @@ export async function savePurchase(
             (@purchase_id_${i}, @medicine_id_${i}, @medicine_name_${i}, @hsn_${i}, @batch_no_${i}, @expiry_month_${i}, @expiry_year_${i}, @packing_${i}, @pack_qty_${i}, @qty_${i}, @deal_qty_${i}, @rate_${i}, @discount_${i}, @cgst_percent_${i}, @sgst_percent_${i}, @cgst_amount_${i}, @sgst_amount_${i}, @taxable_amount_${i}, @amount_${i}, @mrp_${i}, @manufacture_name_${i})
         `);
 
-      if (item.medicine_id) {
-        const hasBatch = item.batch_no && item.batch_no.trim() !== '';
-        const hasExpiry = item.expiry_month && item.expiry_year;
+      // ── Resolve medicine_id — auto-create if not matched ────────────────────
+      // When items come from AI extraction medicine_id is null.
+      // Find existing medicine by name (case-insensitive) or create a new one.
+      let resolvedMedicineId: number | null = item.medicine_id ?? null;
 
-        if (hasBatch && hasExpiry) {
-          await new sql.Request(transaction)
-            .input(`upd_medicine_id_${i}`, sql.Int, item.medicine_id)
-            .input(`upd_qty_${i}`, sql.Int, item.qty + (item.deal_qty || 0))
-            .input(`upd_batch_no_${i}`, sql.NVarChar(100), item.batch_no)
-            .input(`upd_expiry_month_${i}`, sql.Int, item.expiry_month)
-            .input(`upd_expiry_year_${i}`, sql.Int, item.expiry_year)
+      if (!resolvedMedicineId && item.medicine_name.trim()) {
+        const findResult = await new sql.Request(transaction)
+          .input(`find_name_${i}`, sql.NVarChar(255), item.medicine_name.trim())
+          .query(`SELECT TOP 1 id FROM medicines WHERE LOWER(name) = LOWER(@find_name_${i})`);
+
+        if (findResult.recordset.length > 0) {
+          resolvedMedicineId = findResult.recordset[0].id;
+        } else {
+          // Insert only the truly required columns (name, mrp, selling_price are NOT NULL without defaults)
+          const insertResult = await new sql.Request(transaction)
+            .input(`new_name_${i}`, sql.NVarChar(255), item.medicine_name.trim())
+            .input(`new_mrp_${i}`,  sql.Decimal(10, 2), item.mrp || 0)
+            .input(`new_sp_${i}`,   sql.Decimal(10, 2), item.mrp || 0)
+            .input(`new_ca_${i}`,   sql.NVarChar(50),   purchase.created_at)
             .query(`
-              UPDATE medicines
-              SET stock_qty = stock_qty + @upd_qty_${i},
-                  batch_no = @upd_batch_no_${i},
-                  expiry_month = @upd_expiry_month_${i},
-                  expiry_year = @upd_expiry_year_${i}
-              WHERE id = @upd_medicine_id_${i}
+              INSERT INTO medicines (name, mrp, selling_price, created_at, updated_at)
+              OUTPUT INSERTED.id
+              VALUES (@new_name_${i}, @new_mrp_${i}, @new_sp_${i}, @new_ca_${i}, @new_ca_${i})
             `);
-        } else if (hasBatch) {
+          resolvedMedicineId = insertResult.recordset[0].id;
+
+          // Back-fill optional catalogue fields in a separate update
           await new sql.Request(transaction)
-            .input(`upd_medicine_id_${i}`, sql.Int, item.medicine_id)
-            .input(`upd_qty_${i}`, sql.Int, item.qty + (item.deal_qty || 0))
-            .input(`upd_batch_no_${i}`, sql.NVarChar(100), item.batch_no)
+            .input(`upd_id_${i}`,   sql.Int,            resolvedMedicineId)
+            .input(`upd_hsn_${i}`,  sql.NVarChar(50),   item.hsn || '')
+            .input(`upd_pack_${i}`, sql.NVarChar(100),  item.packing || '')
+            .input(`upd_gst_${i}`,  sql.Decimal(5, 2),  Number(item.cgst_percent || 0) * 2)
+            .input(`upd_mfg_${i}`,  sql.NVarChar(255),  item.manufacture_name || '')
+            .input(`upd_rate_${i}`, sql.Decimal(10, 2), item.rate || 0)
             .query(`
-              UPDATE medicines
-              SET stock_qty = stock_qty + @upd_qty_${i},
-                  batch_no = @upd_batch_no_${i}
-              WHERE id = @upd_medicine_id_${i}
+              UPDATE medicines SET
+                hsn              = @upd_hsn_${i},
+                packing          = @upd_pack_${i},
+                gst_percent      = @upd_gst_${i},
+                manufacture_name = @upd_mfg_${i},
+                rate             = @upd_rate_${i}
+              WHERE id = @upd_id_${i}
+            `);
+        }
+      }
+
+      // ── Upsert into medicine_batches ─────────────────────────────────────────
+      if (resolvedMedicineId) {
+        const receivedQty = item.qty + (item.deal_qty || 0);
+        const batchKey = (item.batch_no || '').trim();
+
+        if (batchKey) {
+          // Named batch: upsert by (medicine_id, batch_no)
+          await new sql.Request(transaction)
+            .input(`upsert_mid_${i}`,   sql.Int,            resolvedMedicineId)
+            .input(`upsert_bn_${i}`,    sql.NVarChar(100),  batchKey)
+            .input(`upsert_em_${i}`,    sql.Int,            item.expiry_month ?? null)
+            .input(`upsert_ey_${i}`,    sql.Int,            item.expiry_year  ?? null)
+            .input(`upsert_mrp_${i}`,   sql.Decimal(10, 2), item.mrp  || 0)
+            .input(`upsert_sp_${i}`,    sql.Decimal(10, 2), item.mrp  || 0)   // default selling = mrp
+            .input(`upsert_rate_${i}`,  sql.Decimal(10, 2), item.rate || 0)
+            .input(`upsert_disc_${i}`,  sql.Decimal(5,  2), item.discount || 0)
+            .input(`upsert_qty_${i}`,   sql.Int,            receivedQty)
+            .input(`upsert_ca_${i}`,    sql.NVarChar(50),   purchase.created_at)
+            .query(`
+              IF EXISTS (
+                SELECT 1 FROM medicine_batches
+                WHERE medicine_id = @upsert_mid_${i} AND batch_no = @upsert_bn_${i}
+              )
+                UPDATE medicine_batches SET
+                  stock_qty     = stock_qty + @upsert_qty_${i},
+                  expiry_month  = ISNULL(@upsert_em_${i},  expiry_month),
+                  expiry_year   = ISNULL(@upsert_ey_${i},  expiry_year),
+                  mrp           = @upsert_mrp_${i},
+                  rate          = @upsert_rate_${i},
+                  discount      = @upsert_disc_${i}
+                WHERE medicine_id = @upsert_mid_${i} AND batch_no = @upsert_bn_${i}
+              ELSE
+                INSERT INTO medicine_batches
+                  (medicine_id, batch_no, expiry_month, expiry_year, mrp, selling_price, rate, discount, stock_qty, created_at)
+                VALUES
+                  (@upsert_mid_${i}, @upsert_bn_${i}, @upsert_em_${i}, @upsert_ey_${i},
+                   @upsert_mrp_${i}, @upsert_sp_${i}, @upsert_rate_${i}, @upsert_disc_${i},
+                   @upsert_qty_${i}, @upsert_ca_${i})
             `);
         } else {
+          // No batch number — just add stock to the most recent batch, or create one
           await new sql.Request(transaction)
-            .input(`upd_medicine_id_${i}`, sql.Int, item.medicine_id)
-            .input(`upd_qty_${i}`, sql.Int, item.qty + (item.deal_qty || 0))
+            .input(`nobatch_mid_${i}`,  sql.Int,            resolvedMedicineId)
+            .input(`nobatch_qty_${i}`,  sql.Int,            receivedQty)
+            .input(`nobatch_mrp_${i}`,  sql.Decimal(10, 2), item.mrp  || 0)
+            .input(`nobatch_rate_${i}`, sql.Decimal(10, 2), item.rate || 0)
+            .input(`nobatch_ca_${i}`,   sql.NVarChar(50),   purchase.created_at)
             .query(`
-              UPDATE medicines
-              SET stock_qty = stock_qty + @upd_qty_${i}
-              WHERE id = @upd_medicine_id_${i}
+              IF EXISTS (SELECT 1 FROM medicine_batches WHERE medicine_id = @nobatch_mid_${i})
+                UPDATE medicine_batches SET
+                  stock_qty = stock_qty + @nobatch_qty_${i},
+                  mrp       = CASE WHEN @nobatch_mrp_${i} > 0 THEN @nobatch_mrp_${i} ELSE mrp END,
+                  rate      = CASE WHEN @nobatch_rate_${i} > 0 THEN @nobatch_rate_${i} ELSE rate END
+                WHERE id = (
+                  SELECT TOP 1 id FROM medicine_batches
+                  WHERE medicine_id = @nobatch_mid_${i}
+                  ORDER BY id DESC
+                )
+              ELSE
+                INSERT INTO medicine_batches
+                  (medicine_id, batch_no, mrp, selling_price, rate, stock_qty, created_at)
+                VALUES
+                  (@nobatch_mid_${i}, '', @nobatch_mrp_${i}, @nobatch_mrp_${i}, @nobatch_rate_${i}, @nobatch_qty_${i}, @nobatch_ca_${i})
             `);
         }
       }

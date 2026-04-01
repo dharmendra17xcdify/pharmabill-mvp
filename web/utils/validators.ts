@@ -14,8 +14,14 @@ export const medicineSchema = z.object({
   name: z.string().min(1, 'Medicine name is required'),
   generic_name: z.string().optional().default(''),
   batch_no: z.string().optional().default(''),
-  expiry_month: z.coerce.number().min(1).max(12).nullable().optional(),
-  expiry_year: z.coerce.number().min(2020).max(2050).nullable().optional(),
+  expiry_month: z.preprocess(
+    (v) => (v === '' || v === null || v === undefined ? null : v),
+    z.coerce.number().min(1).max(12).nullable().optional()
+  ),
+  expiry_year: z.preprocess(
+    (v) => (v === '' || v === null || v === undefined ? null : v),
+    z.coerce.number().min(2020).max(2050).nullable().optional()
+  ),
   mrp: z.coerce.number().positive('MRP must be positive'),
   selling_price: z.coerce.number().positive('Selling price must be positive'),
   gst_percent: z.coerce.number().min(0).max(28).default(0),

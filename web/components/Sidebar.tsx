@@ -5,7 +5,7 @@ import { useState } from 'react';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Dashboard', icon: '🏠' },
-  { href: '/medicines', label: 'Medicines', icon: '💊' },
+  { href: '/medicines', label: 'Item Master', icon: '💊' },
   { href: '/purchases', label: 'Purchases', icon: '📦' },
   { href: '/returns', label: 'Returns', icon: '↩️' },
   { href: '/billing/new', label: 'New Bill', icon: '🧾' },

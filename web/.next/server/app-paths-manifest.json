@@ -1,11 +1,14 @@
 {
-  "/api/reports/route": "app/api/reports/route.js",
-  "/api/supplier-returns/route": "app/api/supplier-returns/route.js",
+  "/api/purchases/route": "app/api/purchases/route.js",
   "/api/settings/route": "app/api/settings/route.js",
-  "/settings/page": "app/settings/page.js",
-  "/returns/page": "app/returns/page.js",
-  "/returns/new/page": "app/returns/new/page.js",
-  "/returns/[id]/page": "app/returns/[id]/page.js",
-  "/page": "app/page.js",
-  "/medicines/page": "app/medicines/page.js"
+  "/api/purchases/[id]/route": "app/api/purchases/[id]/route.js",
+  "/api/medicines/route": "app/api/medicines/route.js",
+  "/api/reports/route": "app/api/reports/route.js",
+  "/purchases/page": "app/purchases/page.js",
+  "/purchases/new/page": "app/purchases/new/page.js",
+  "/purchases/[id]/page": "app/purchases/[id]/page.js",
+  "/medicines/page": "app/medicines/page.js",
+  "/medicines/add/page": "app/medicines/add/page.js",
+  "/billing/new/page": "app/billing/new/page.js",
+  "/page": "app/page.js"
 }

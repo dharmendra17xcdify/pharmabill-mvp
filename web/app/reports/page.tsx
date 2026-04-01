@@ -41,20 +41,20 @@ export default function ReportsPage() {
 
       <div className="card">
         <h3 className="font-semibold text-gray-700 mb-3">
-          Low Stock Medicines
+          Low Stock Items
           <span className={`ml-2 badge ${(data?.lowStockCount ?? 0) > 0 ? 'bg-orange-100 text-warning' : 'bg-green-100 text-success'}`}>
             {data?.lowStockCount ?? 0}
           </span>
         </h3>
 
         {(data?.lowStockMedicines?.length ?? 0) === 0 ? (
-          <p className="text-gray-400 text-sm py-4 text-center">All medicines have adequate stock.</p>
+          <p className="text-gray-400 text-sm py-4 text-center">All items have adequate stock.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr>
-                  <th className="table-header rounded-tl">Medicine</th>
+                  <th className="table-header rounded-tl">Item</th>
                   <th className="table-header">Batch</th>
                   <th className="table-header">Expiry</th>
                   <th className="table-header text-right">MRP</th>

@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useMedicineStore } from '@/store/useMedicineStore';
 import { formatINR } from '@/utils/currency';
+import type { ExtractedPO } from '@/app/api/purchases/extract/route';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -98,8 +99,15 @@ export default function NewPurchasePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const tableRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [mounted, setMounted] = useState(false);
   const [dropdownAnchor, setDropdownAnchor] = useState<{ top: number; left: number } | null>(null);
+
+  // ── AI Import state ──────────────────────────────────────────────────────────
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<string | null>(null); // object URL for images
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractStatus, setExtractStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
   useEffect(() => { loadMedicines(); setMounted(true); }, []);
 
@@ -151,6 +159,69 @@ export default function NewPurchasePage() {
       rate: med.rate ? String(med.rate) : '',
     });
     setFocusedRowKey(null);
+  };
+
+  // ── AI Import helpers ─────────────────────────────────────────────────────────
+
+  const handleFileSelect = (file: File) => {
+    setExtractStatus(null);
+    setImportFile(file);
+    if (file.type.startsWith('image/')) {
+      setImportPreview(URL.createObjectURL(file));
+    } else {
+      setImportPreview(null);
+    }
+  };
+
+  const handleExtract = async () => {
+    if (!importFile) return;
+    setIsExtracting(true);
+    setExtractStatus(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', importFile);
+      const res = await fetch('/api/purchases/extract', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Extraction failed');
+
+      const po: ExtractedPO = data;
+
+      // Pre-fill supplier fields
+      if (po.supplier.supplier_name)     setSupplierName(po.supplier.supplier_name);
+      if (po.supplier.supplier_invoice_no) setSupplierInvoiceNo(po.supplier.supplier_invoice_no);
+      if (po.supplier.supplier_gstin)    setSupplierGstin(po.supplier.supplier_gstin);
+      if (po.supplier.supplier_address)  setSupplierAddress(po.supplier.supplier_address);
+      if (po.supplier.supplier_phone)    setSupplierPhone(po.supplier.supplier_phone);
+      if (po.supplier.supplier_drug_license) setSupplierDrugLicense(po.supplier.supplier_drug_license);
+
+      // Pre-fill item rows
+      if (po.items.length > 0) {
+        setRows(po.items.map(item => ({
+          key:              randomKey(),
+          medicine_id:      null,
+          medicine_name:    item.medicine_name   || '',
+          hsn:              item.hsn              || '',
+          batch_no:         item.batch_no         || '',
+          expiry_month:     item.expiry_month != null ? String(item.expiry_month) : '',
+          expiry_year:      item.expiry_year  != null ? String(item.expiry_year)  : '',
+          packing:          item.packing          || '',
+          pack_qty:         String(item.pack_qty  ?? 1),
+          qty:              item.qty  > 0  ? String(item.qty)  : '',
+          deal_qty:         String(item.deal_qty  ?? 0),
+          rate:             item.rate > 0  ? String(item.rate) : '',
+          discount:         String(item.discount  ?? 0),
+          gst_percent:      item.gst_percent      || '5',
+          mrp:              item.mrp  > 0  ? String(item.mrp)  : '',
+          manufacture_name: item.manufacture_name || '',
+        })));
+      }
+
+      setExtractStatus({ type: 'success', msg: `Extracted ${po.items.length} item(s). Review and save.` });
+    } catch (e: any) {
+      setExtractStatus({ type: 'error', msg: e.message || 'Extraction failed' });
+    } finally {
+      setIsExtracting(false);
+    }
   };
 
   // ── Grand totals ─────────────────────────────────────────────────────────────
@@ -260,7 +331,123 @@ export default function NewPurchasePage() {
           </button>
           <h2 className="text-xl font-bold text-gray-800">New Purchase / GRN</h2>
         </div>
-        <button onClick={addRow} className="btn-primary text-sm">+ Add Row</button>
+        <button
+          onClick={() => {
+            setSupplierName('');
+            setSupplierInvoiceNo('');
+            setSupplierGstin('');
+            setSupplierAddress('');
+            setSupplierPhone('');
+            setSupplierDrugLicense('');
+            setPaymentMode('Cash');
+            setRows([emptyRow()]);
+            setImportFile(null);
+            setImportPreview(null);
+            setExtractStatus(null);
+          }}
+          className="btn-secondary text-sm"
+        >
+          Clear
+        </button>
+      </div>
+
+      {/* ── AI Import card ─────────────────────────────────────────────────── */}
+      <div
+        className={`card border-2 border-dashed transition-colors ${
+          importFile ? 'border-primary/40 bg-blue-50/30' : 'border-gray-200 hover:border-primary/30'
+        }`}
+        onDragOver={e => { e.preventDefault(); }}
+        onDrop={e => {
+          e.preventDefault();
+          const file = e.dataTransfer.files[0];
+          if (file) handleFileSelect(file);
+        }}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="font-semibold text-gray-700 text-sm">Import from Image / PDF</p>
+            <p className="text-xs text-gray-400 mt-0.5">Upload a supplier invoice or delivery challan — AI will pre-fill the form</p>
+          </div>
+          {importFile && (
+            <button
+              type="button"
+              onClick={() => { setImportFile(null); setImportPreview(null); setExtractStatus(null); }}
+              className="text-xs text-gray-400 hover:text-danger ml-4 shrink-0"
+            >
+              ✕ Clear
+            </button>
+          )}
+        </div>
+
+        {!importFile ? (
+          /* Drop zone */
+          <div
+            className="flex flex-col items-center justify-center py-6 cursor-pointer rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <span className="text-3xl mb-2">📄</span>
+            <p className="text-sm text-gray-500">Click to browse or drag & drop</p>
+            <p className="text-xs text-gray-400 mt-1">JPEG · PNG · WebP · PDF — max 10 MB</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
+              className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); e.target.value = ''; }}
+            />
+          </div>
+        ) : (
+          /* Preview + extract */
+          <div className="flex items-start gap-4">
+            {/* Image thumbnail or PDF icon */}
+            {importPreview ? (
+              <img
+                src={importPreview}
+                alt="Preview"
+                className="w-28 h-28 object-cover rounded border border-gray-200 shrink-0"
+              />
+            ) : (
+              <div className="w-28 h-28 flex flex-col items-center justify-center rounded border border-gray-200 bg-gray-50 shrink-0">
+                <span className="text-3xl">📋</span>
+                <p className="text-xs text-gray-500 mt-1 text-center px-1 truncate w-full text-center">
+                  {importFile.name}
+                </p>
+              </div>
+            )}
+
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-700 truncate">{importFile.name}</p>
+              <p className="text-xs text-gray-400 mb-3">
+                {(importFile.size / 1024).toFixed(0)} KB · {importFile.type.split('/')[1].toUpperCase()}
+              </p>
+
+              <button
+                type="button"
+                onClick={handleExtract}
+                disabled={isExtracting}
+                className="btn-primary text-sm flex items-center gap-2"
+              >
+                {isExtracting ? (
+                  <>
+                    <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Extracting…
+                  </>
+                ) : (
+                  '✦ Extract Data'
+                )}
+              </button>
+
+              {extractStatus && (
+                <p className={`text-xs mt-2 font-medium ${
+                  extractStatus.type === 'success' ? 'text-success' : 'text-danger'
+                }`}>
+                  {extractStatus.type === 'success' ? '✓ ' : '✗ '}
+                  {extractStatus.msg}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Supplier card */}
@@ -347,15 +534,16 @@ export default function NewPurchasePage() {
 
       {/* Items table */}
       <div className="card p-0">
-        <div className="px-4 py-2 border-b border-gray-100">
+        <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
           <span className="font-semibold text-gray-700 text-sm">Items</span>
+          <button onClick={addRow} className="btn-primary text-xs py-1 px-3">+ Add Row</button>
         </div>
         <div className="overflow-x-auto" ref={tableRef}>
           <table className="text-xs" style={{ minWidth: 1080, width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr className="bg-primary text-white">
                 <th style={{ width: 30, padding: '6px 4px', textAlign: 'center', fontWeight: 600 }}>#</th>
-                <th style={{ width: 140, padding: '6px 4px', fontWeight: 600 }}>Medicine</th>
+                <th style={{ width: 140, padding: '6px 4px', fontWeight: 600 }}>Item</th>
                 <th style={{ width: 70, padding: '6px 4px', fontWeight: 600 }}>HSN</th>
                 <th style={{ width: 80, padding: '6px 4px', fontWeight: 600 }}>Batch</th>
                 <th style={{ width: 100, padding: '6px 4px', textAlign: 'center', fontWeight: 600 }}>Exp (MM/YYYY)</th>

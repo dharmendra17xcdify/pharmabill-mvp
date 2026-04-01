@@ -1,7 +1,7 @@
 export const PAYMENT_MODES = ['Cash', 'UPI', 'Card'] as const;
 export type PaymentMode = typeof PAYMENT_MODES[number];
 
-export const LOW_STOCK_THRESHOLD = 10;
+export const LOW_STOCK_THRESHOLD = 5;
 
 export const GST_RATES = [0, 5, 12, 18, 28];
 

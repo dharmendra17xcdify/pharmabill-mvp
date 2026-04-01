@@ -21,8 +21,8 @@ export async function POST(request: Request) {
       items
     );
     return NextResponse.json({ id, purchase_number }, { status: 201 });
-  } catch (err) {
+  } catch (err: any) {
     console.error('POST /api/purchases', err);
-    return NextResponse.json({ error: 'Failed to save purchase' }, { status: 500 });
+    return NextResponse.json({ error: err?.message ?? 'Failed to save purchase' }, { status: 500 });
   }
 }

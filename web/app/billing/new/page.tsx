@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBillingStore } from '@/store/useBillingStore';
 import { useMedicineStore } from '@/store/useMedicineStore';
@@ -23,17 +23,19 @@ export default function NewBillPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [qtyInputs, setQtyInputs] = useState<Record<number, number>>({});
   const [looseInputs, setLooseInputs] = useState<Record<number, boolean>>({});
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { loadMedicines(); return () => clearCart(); }, []);
 
   useEffect(() => {
-    if (!query.trim()) { setResults([]); return; }
+    if (!query.trim()) { setResults([]); setSelectedIndex(-1); return; }
     const q = query.toLowerCase();
-    setResults(
-      medicines.filter(
-        m => m.name.toLowerCase().includes(q) || m.generic_name.toLowerCase().includes(q)
-      ).slice(0, 10)
-    );
+    const filtered = medicines
+      .filter(m => m.name.toLowerCase().includes(q) || m.generic_name.toLowerCase().includes(q))
+      .slice(0, 10);
+    setResults(filtered);
+    setSelectedIndex(filtered.length > 0 ? 0 : -1);
   }, [query, medicines]);
 
   const handleAdd = (medicine: Medicine) => {
@@ -42,6 +44,26 @@ export default function NewBillPage() {
     addToCart(medicine, qty, isLoose);
     setQuery('');
     setResults([]);
+    setSelectedIndex(-1);
+    searchRef.current?.focus();
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!results.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex(i => (i + 1) % results.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex(i => (i - 1 + results.length) % results.length);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const m = results[selectedIndex >= 0 ? selectedIndex : 0];
+      if (m && m.stock_qty > 0) handleAdd(m);
+    } else if (e.key === 'Escape') {
+      setResults([]);
+      setSelectedIndex(-1);
+    }
   };
 
   const { subtotal, gstTotal, grandTotal } = computeTotals();
@@ -91,38 +113,51 @@ export default function NewBillPage() {
         {/* Left: search */}
         <div className="flex-1 space-y-4">
           <div className="card">
-            <h3 className="font-semibold text-gray-700 mb-3">Add Medicines</h3>
+            <h3 className="font-semibold text-gray-700 mb-3">Add Items</h3>
             <div className="flex gap-2">
               <input
+                ref={searchRef}
                 className="input"
                 placeholder="Search medicine by name…"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                autoComplete="off"
               />
             </div>
 
             {results.length > 0 && (
               <div className="mt-2 border border-gray-200 rounded-md overflow-hidden">
-                {results.map(m => {
+                {results.map((m, idx) => {
                   const isLoose = looseInputs[m.id!] ?? false;
                   const packingQty = m.packing_qty && m.packing_qty > 1 ? m.packing_qty : 1;
                   const displayPrice = isLoose
                     ? parseFloat((Number(m.selling_price) / packingQty).toFixed(2))
                     : Number(m.selling_price);
+                  const isSelected = idx === selectedIndex;
                   return (
                     <div
-                      key={m.id}
-                      className="flex items-center justify-between p-2 hover:bg-gray-50 border-b last:border-b-0"
+                      key={`${m.id}-${m.batch_id ?? idx}`}
+                      className={`flex items-center justify-between p-2 border-b last:border-b-0 cursor-pointer transition-colors ${
+                        isSelected ? 'bg-blue-50 border-l-2 border-l-primary' : 'hover:bg-gray-50'
+                      } ${m.stock_qty === 0 ? 'opacity-50' : ''}`}
+                      onMouseEnter={() => setSelectedIndex(idx)}
+                      onClick={() => m.stock_qty > 0 && handleAdd(m)}
                     >
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium">{m.name}</div>
                         {m.generic_name && <div className="text-xs text-gray-400">{m.generic_name}</div>}
                         <div className="text-xs text-gray-500">
                           {m.packing && <span className="mr-1">{m.packing} ·</span>}
+                          {m.batch_no && <span className="mr-1">Batch: {m.batch_no} ·</span>}
                           {formatINR(displayPrice)}{isLoose ? '/tablet' : '/strip'} · Stock: {m.stock_qty}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      {/* Controls — stopPropagation so clicks here don't trigger the row click */}
+                      <div
+                        className="flex items-center gap-2 ml-2 shrink-0"
+                        onClick={e => e.stopPropagation()}
+                      >
                         {packingQty > 1 && (
                           <button
                             type="button"
@@ -145,7 +180,7 @@ export default function NewBillPage() {
                           onChange={e => setQtyInputs(prev => ({ ...prev, [m.id!]: Number(e.target.value) }))}
                         />
                         <button
-                          onClick={() => handleAdd(m)}
+                          onClick={() => m.stock_qty > 0 && handleAdd(m)}
                           className="btn-primary text-xs px-3 py-1"
                           disabled={m.stock_qty === 0}
                         >

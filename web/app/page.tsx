@@ -63,7 +63,7 @@ export default function DashboardPage() {
             + New Bill
           </Link>
           <Link href="/medicines/add" className="btn-secondary text-sm">
-            + Add Medicine
+            + Add Item
           </Link>
           <Link href="/bills" className="btn-secondary text-sm">
             View Bills
@@ -75,13 +75,13 @@ export default function DashboardPage() {
       {(data?.lowStockMedicines?.length ?? 0) > 0 && (
         <div className="card">
           <h3 className="font-semibold text-warning mb-3">
-            ⚠️ Low Stock Medicines ({data!.lowStockMedicines?.length ?? 0})
+            ⚠️ Low Stock Items ({data!.lowStockMedicines?.length ?? 0})
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr>
-                  <th className="table-header rounded-tl">Medicine</th>
+                  <th className="table-header rounded-tl">Item</th>
                   <th className="table-header">Batch</th>
                   <th className="table-header">Expiry</th>
                   <th className="table-header rounded-tr text-right">Stock</th>

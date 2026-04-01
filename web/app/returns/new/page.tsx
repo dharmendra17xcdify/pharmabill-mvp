@@ -422,7 +422,7 @@ export default function NewReturnPage() {
             <thead>
               <tr className="bg-primary text-white">
                 <th style={{ width: 30, padding: '6px 4px', textAlign: 'center', fontWeight: 600 }}>#</th>
-                <th style={{ width: 140, padding: '6px 4px', fontWeight: 600 }}>Medicine</th>
+                <th style={{ width: 140, padding: '6px 4px', fontWeight: 600 }}>Item</th>
                 <th style={{ width: 70, padding: '6px 4px', fontWeight: 600 }}>HSN</th>
                 <th style={{ width: 80, padding: '6px 4px', fontWeight: 600 }}>Batch</th>
                 <th style={{ width: 100, padding: '6px 4px', textAlign: 'center', fontWeight: 600 }}>Exp (MM/YYYY)</th>

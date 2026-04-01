@@ -4,15 +4,19 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node ./run-build.js build",
     "start": "next start"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
+    "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.2.2",
     "dayjs": "^1.11.20",
+    "groq-sdk": "^1.1.2",
     "iron-session": "^8.0.4",
     "mssql": "^11.0.1",
     "next": "^15.1.0",
+    "pdf-parse": "^2.4.5",
     "puppeteer": "^24.40.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

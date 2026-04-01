@@ -228,3 +228,47 @@ IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('supplier_r
   ALTER TABLE supplier_returns ADD supplier_address NVARCHAR(500) NOT NULL DEFAULT '';
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('supplier_returns') AND name = 'supplier_drug_license')
   ALTER TABLE supplier_returns ADD supplier_drug_license NVARCHAR(100) NOT NULL DEFAULT '';
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- medicine_batches: per-batch inventory tracking
+--   Each physical batch (distinct batch_no + expiry + MRP) is a separate row.
+--   The medicines table remains the catalogue; all pricing/stock lives here.
+-- ─────────────────────────────────────────────────────────────────────────────
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='medicine_batches' AND xtype='U')
+CREATE TABLE medicine_batches (
+  id            INT IDENTITY(1,1) PRIMARY KEY,
+  medicine_id   INT            NOT NULL REFERENCES medicines(id) ON DELETE CASCADE,
+  batch_no      NVARCHAR(100)  NOT NULL DEFAULT '',
+  expiry_month  INT            NULL,
+  expiry_year   INT            NULL,
+  mrp           DECIMAL(10,2)  NOT NULL DEFAULT 0,
+  selling_price DECIMAL(10,2)  NOT NULL DEFAULT 0,
+  rate          DECIMAL(10,2)  NOT NULL DEFAULT 0,   -- purchase / cost price
+  discount      DECIMAL(5,2)   NOT NULL DEFAULT 0,
+  stock_qty     INT            NOT NULL DEFAULT 0,
+  created_at    NVARCHAR(50)   NOT NULL DEFAULT ''
+);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='IX_medicine_batches_medicine_id' AND object_id = OBJECT_ID('medicine_batches'))
+  CREATE INDEX IX_medicine_batches_medicine_id ON medicine_batches(medicine_id);
+
+-- Migrate existing medicine records into medicine_batches (idempotent).
+-- Only migrates medicines that have meaningful data and no batch entry yet.
+INSERT INTO medicine_batches
+  (medicine_id, batch_no, expiry_month, expiry_year, mrp, selling_price, rate, discount, stock_qty, created_at)
+SELECT
+  id,
+  ISNULL(batch_no,       ''),
+  expiry_month,
+  expiry_year,
+  ISNULL(mrp,            0),
+  ISNULL(selling_price,  0),
+  ISNULL(rate,           0),
+  ISNULL(discount,       0),
+  ISNULL(stock_qty,      0),
+  ISNULL(created_at,     '')
+FROM medicines m
+WHERE NOT EXISTS (
+  SELECT 1 FROM medicine_batches mb WHERE mb.medicine_id = m.id
+)
+AND (ISNULL(mrp, 0) > 0 OR ISNULL(selling_price, 0) > 0 OR ISNULL(stock_qty, 0) > 0);

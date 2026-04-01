@@ -14,7 +14,7 @@ export default function SettingsPage() {
     reset,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<SettingsFormData>({
-    resolver: zodResolver(settingsSchema),
+    resolver: zodResolver(settingsSchema) as any,
     defaultValues: { invoice_prefix: 'MED' },
   });
 

@@ -157,7 +157,7 @@ export default function BillDetailPage() {
             <thead>
               <tr>
                 <th className="table-header">#</th>
-                <th className="table-header">Medicine</th>
+                <th className="table-header">Item</th>
                 <th className="table-header">HSN</th>
                 <th className="table-header">Expiry</th>
                 <th className="table-header">Manufacturer</th>

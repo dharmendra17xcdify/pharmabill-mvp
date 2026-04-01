@@ -6,40 +6,15 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/bills/[id]/page": [
+    "/login/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/bills/[id]/page.js"
+      "static/chunks/app/login/page.js"
     ],
-    "/api/settings/route": [
+    "/api/auth/login/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/settings/route.js"
-    ],
-    "/api/bills/[id]/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/bills/[id]/route.js"
-    ],
-    "/api/bills/[id]/pdf/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/bills/[id]/pdf/route.js"
-    ],
-    "/settings/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/settings/page.js"
-    ],
-    "/bills/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/bills/page.js"
-    ],
-    "/api/bills/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/bills/route.js"
+      "static/chunks/app/api/auth/login/route.js"
     ],
     "/page": [
       "static/chunks/webpack.js",
@@ -50,41 +25,6 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/reports/route.js"
-    ],
-    "/medicines/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/medicines/page.js"
-    ],
-    "/api/medicines/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/medicines/route.js"
-    ],
-    "/billing/new/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/billing/new/page.js"
-    ],
-    "/reports/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/reports/page.js"
-    ],
-    "/medicines/add/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/medicines/add/page.js"
-    ],
-    "/medicines/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/medicines/[id]/page.js"
-    ],
-    "/api/medicines/[id]/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/medicines/[id]/route.js"
     ],
     "/purchases/page": [
       "static/chunks/webpack.js",
@@ -101,40 +41,45 @@
       "static/chunks/main-app.js",
       "static/chunks/app/purchases/new/page.js"
     ],
+    "/api/medicines/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/medicines/route.js"
+    ],
+    "/api/purchases/extract/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/purchases/extract/route.js"
+    ],
     "/purchases/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/purchases/[id]/page.js"
+    ],
+    "/api/settings/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/settings/route.js"
     ],
     "/api/purchases/[id]/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/purchases/[id]/route.js"
     ],
-    "/returns/page": [
+    "/medicines/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/returns/page.js"
+      "static/chunks/app/medicines/page.js"
     ],
-    "/api/supplier-returns/route": [
+    "/medicines/add/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/supplier-returns/route.js"
+      "static/chunks/app/medicines/add/page.js"
     ],
-    "/returns/new/page": [
+    "/billing/new/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/returns/new/page.js"
-    ],
-    "/returns/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/returns/[id]/page.js"
-    ],
-    "/api/supplier-returns/[id]/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/supplier-returns/[id]/route.js"
+      "static/chunks/app/billing/new/page.js"
     ]
   }
 }

@@ -7,9 +7,10 @@ interface MedicineStore {
   isLoading: boolean;
   loadMedicines: () => Promise<void>;
   searchMedicines: (query: string) => Medicine[];
-  addMedicine: (medicine: Omit<Medicine, 'id'>) => Promise<void>;
+  addMedicine: (medicine: Omit<Medicine, 'id' | 'batch_id'>) => Promise<void>;
   updateMedicine: (medicine: Medicine) => Promise<void>;
   deleteMedicine: (id: number) => Promise<void>;
+  deleteBatch: (batchId: number) => Promise<void>;
 }
 
 export const useMedicineStore = create<MedicineStore>((set, get) => ({
@@ -33,7 +34,7 @@ export const useMedicineStore = create<MedicineStore>((set, get) => ({
     );
   },
 
-  addMedicine: async (medicine: Omit<Medicine, 'id'>) => {
+  addMedicine: async (medicine) => {
     await fetch('/api/medicines', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -53,6 +54,12 @@ export const useMedicineStore = create<MedicineStore>((set, get) => ({
 
   deleteMedicine: async (id: number) => {
     await fetch(`/api/medicines/${id}`, { method: 'DELETE' });
+    await get().loadMedicines();
+  },
+
+  /** Deletes a single batch; the medicine catalogue entry is kept. */
+  deleteBatch: async (batchId: number) => {
+    await fetch(`/api/medicines/batch/${batchId}`, { method: 'DELETE' });
     await get().loadMedicines();
   },
 }));
