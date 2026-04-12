@@ -19,8 +19,17 @@ export async function POST(request: Request) {
     const settings = await getSettings();
     const prefix = settings?.invoice_prefix ?? 'MED';
     const bill_number = await getNextInvoiceNumber(prefix);
+    // Combine chosen date with current time so the timestamp is accurate
+    const created_at = bill.bill_date
+      ? (() => {
+          const now = new Date();
+          const [y, m, d] = bill.bill_date.split('-').map(Number);
+          now.setFullYear(y, m - 1, d);
+          return now.toISOString();
+        })()
+      : nowISO();
     const billId = await saveBill(
-      { ...bill, bill_number, created_at: nowISO() },
+      { ...bill, bill_number, created_at },
       items
     );
     return NextResponse.json({ id: billId, bill_number }, { status: 201 });

@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { medicineSchema, MedicineFormData } from '@/utils/validators';
 import { useMedicineStore } from '@/store/useMedicineStore';
-import { GST_RATES } from '@/constants/paymentModes';
+import { GST_RATES, MEDICINE_CATEGORIES } from '@/constants/paymentModes';
 
 export default function EditMedicinePage() {
   const router = useRouter();
@@ -73,6 +73,8 @@ export default function EditMedicinePage() {
       discount:         data.discount          ?? 0,
       manufacture_name: data.manufacture_name  ?? '',
       group:            data.group             ?? '',
+      mrp:              data.mrp               ?? 0,
+      selling_price:    data.selling_price     ?? 0,
     });
     router.push('/medicines');
   };
@@ -118,8 +120,13 @@ export default function EditMedicinePage() {
               <input className="input" {...register('manufacture_name')} />
             </div>
             <div>
-              <label className="label">Group</label>
-              <input className="input" {...register('group')} />
+              <label className="label">Category</label>
+              <select className="input" {...register('group')}>
+                <option value="">— Select —</option>
+                {MEDICINE_CATEGORIES.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
             </div>
           </div>
 

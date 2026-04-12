@@ -17,30 +17,45 @@ OutputBaseFilename=PharmaBill-Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+; Logo shown on the left panel of the installer wizard
+WizardImageFile=..\assets\logo big.png
+WizardImageStretch=yes
+; Small logo shown in the top-right corner of interior pages
+WizardSmallImageFile=..\assets\logo.png
+; Icon for the setup .exe itself — place a logo.ico in assets\ to enable
+; SetupIconFile=..\assets\logo.ico
 PrivilegesRequired=admin
 SetupMutex=PharmaBillSetupMutex
 CloseApplications=no
 UninstallDisplayName=PharmaBill
+; Allow running the installer over an existing installation (update in-place)
+; without requiring the old version to be uninstalled first.
+AppId={{B7F3A2C1-4D5E-4F6A-8B9C-0D1E2F3A4B5C}
+AppVersion=1.0.0
+VersionInfoVersion=1.0.0
+DirExistsWarning=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-; Next.js standalone app
+; Next.js standalone app — always overwrite so updates take effect
 Source: "..\dist\app\*"; DestDir: "{app}\app"; Flags: ignoreversion recursesubdirs createallsubdirs
+; App icon (used by shortcuts)
+Source: "..\assets\logo.ico";           DestDir: "{app}\assets"; Flags: ignoreversion
 ; Launcher files
 Source: "..\dist\launcher.js";           DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dist\start-pharmabill.vbs";  DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dist\stop-pharmabill.bat";   DestDir: "{app}"; Flags: ignoreversion
-Source: "..\dist\debug-launcher.bat";   DestDir: "{app}"; Flags: ignoreversion
-; Bundled portable Node.js (user must place extracted zip contents in installer\node\)
+Source: "..\dist\debug-launcher.bat";    DestDir: "{app}"; Flags: ignoreversion
+; Bundled portable Node.js
 Source: "node\*"; DestDir: "{app}\node"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 ; Desktop shortcut
-Name: "{commondesktop}\PharmaBill";       Filename: "{sys}\wscript.exe"; Parameters: """{app}\start-pharmabill.vbs"""; WorkingDir: "{app}"; Comment: "Start PharmaBill"
+Name: "{commondesktop}\PharmaBill";       Filename: "{sys}\wscript.exe"; Parameters: """{app}\start-pharmabill.vbs"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\logo.ico"; Comment: "Start PharmaBill"
 ; Start Menu shortcuts
-Name: "{group}\Start PharmaBill";         Filename: "{sys}\wscript.exe"; Parameters: """{app}\start-pharmabill.vbs"""; WorkingDir: "{app}"; Comment: "Start PharmaBill"
+Name: "{group}\Start PharmaBill";         Filename: "{sys}\wscript.exe"; Parameters: """{app}\start-pharmabill.vbs"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\logo.ico"; Comment: "Start PharmaBill"
 Name: "{group}\Stop PharmaBill";          Filename: "{app}\stop-pharmabill.bat";  WorkingDir: "{app}"; Comment: "Stop PharmaBill server"
 Name: "{group}\Uninstall PharmaBill";     Filename: "{uninstallexe}"
 
@@ -61,6 +76,8 @@ var
   AuthUser:    TEdit;
   AuthPass:    TEdit;
   AuthConfirm: TEdit;
+
+  IsUpgrade: Boolean;  { True when .env already exists — skip DB/auth pages }
 
 { ---- Simple random string for SESSION_SECRET ---- }
 function RandomStr(Len: Integer): string;
@@ -89,6 +106,9 @@ end;
 
 procedure InitializeWizard;
 begin
+  { Detect upgrade: if .env already exists in the target dir, skip config pages }
+  IsUpgrade := FileExists(ExpandConstant('{app}\.env'));
+
   { ======== DATABASE PAGE ======== }
   DbPage := CreateCustomPage(wpSelectDir,
     'Database Configuration',
@@ -151,10 +171,21 @@ begin
   AuthConfirm.Parent := AuthPage.Surface;
 end;
 
-{ ---- Validate inputs before allowing Next ---- }
+{ ---- Skip DB/auth config pages on upgrade ---- }
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
+  if IsUpgrade then begin
+    if (PageID = DbPage.ID) or (PageID = AuthPage.ID) then
+      Result := True;
+  end;
+end;
+
+{ ---- Validate inputs before allowing Next (only on fresh install) ---- }
 function NextButtonClick(CurPageID: Integer): Boolean;
 begin
   Result := True;
+  if IsUpgrade then Exit;  { nothing to validate on upgrade }
 
   if CurPageID = DbPage.ID then begin
     if Trim(DbServer.Text) = '' then begin
@@ -187,7 +218,7 @@ begin
   end;
 end;
 
-{ ---- Write .env file after files are installed ---- }
+{ ---- Write .env only on fresh install; leave it untouched on upgrade ---- }
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   EnvFile: string;
@@ -196,6 +227,9 @@ var
 begin
   if CurStep = ssPostInstall then begin
     EnvFile := ExpandConstant('{app}\.env');
+
+    { Upgrade: .env already exists — do not overwrite it }
+    if FileExists(EnvFile) then Exit;
 
     if DbTrust.Checked then TrustVal := 'true' else TrustVal := 'false';
 

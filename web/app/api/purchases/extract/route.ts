@@ -109,7 +109,8 @@ export async function POST(request: Request) {
     let rawText = '';
 
     if (mimeType === 'application/pdf') {
-      const pdfParse = (await import('pdf-parse')).default;
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const pdfParse = require('pdf-parse');
       const parsed = await pdfParse(buffer);
       const pdfText = parsed.text?.trim();
 

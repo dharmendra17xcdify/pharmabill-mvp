@@ -26,7 +26,7 @@ export default function SetupPage() {
   return (
     <div className="max-w-lg mx-auto mt-8">
       <div className="card">
-        <h2 className="text-xl font-bold text-primary mb-1">Welcome to PharmaBill</h2>
+        <h2 className="text-xl font-bold text-primary mb-1">Welcome — Set Up Your Store</h2>
         <p className="text-gray-500 text-sm mb-6">Set up your pharmacy details to get started.</p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

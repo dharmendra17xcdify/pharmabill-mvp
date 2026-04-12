@@ -38,5 +38,6 @@ export interface Purchase {
   discount_total: number;
   grand_total: number;
   payment_mode: string;
+  notes: string;
   created_at: string;
 }

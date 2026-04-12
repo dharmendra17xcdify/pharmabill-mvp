@@ -22,8 +22,14 @@ export const medicineSchema = z.object({
     (v) => (v === '' || v === null || v === undefined ? null : v),
     z.coerce.number().min(2020).max(2050).nullable().optional()
   ),
-  mrp: z.coerce.number().positive('MRP must be positive'),
-  selling_price: z.coerce.number().positive('Selling price must be positive'),
+  mrp: z.preprocess(
+    (v) => (v === '' || v === null || v === undefined ? null : v),
+    z.coerce.number().positive('MRP must be positive').nullable().optional()
+  ),
+  selling_price: z.preprocess(
+    (v) => (v === '' || v === null || v === undefined ? null : v),
+    z.coerce.number().positive('Selling price must be positive').nullable().optional()
+  ),
   gst_percent: z.coerce.number().min(0).max(28).default(0),
   stock_qty: z.coerce.number().min(0, 'Stock cannot be negative').default(0),
   packing: z.string().optional().default(''),

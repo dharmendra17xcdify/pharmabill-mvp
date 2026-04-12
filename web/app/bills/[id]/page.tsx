@@ -112,6 +112,7 @@ export default function BillDetailPage() {
           <h2 className="text-xl font-bold text-gray-800">Bill {bill.bill_number}</h2>
         </div>
         <div className="flex gap-2">
+          <button onClick={() => router.push(`/bills/${id}/edit`)} className="btn-secondary text-sm">Edit</button>
           <button onClick={handleWhatsApp} disabled={pdfLoading} className="btn-whatsapp text-sm">
             {pdfLoading ? '⏳ Preparing…' : '💬 WhatsApp PDF'}
           </button>
@@ -163,9 +164,7 @@ export default function BillDetailPage() {
                 <th className="table-header">Manufacturer</th>
                 <th className="table-header text-center">Qty</th>
                 <th className="table-header text-right">Rate</th>
-                <th className="table-header text-center">GST%</th>
-                <th className="table-header text-right">GST Amt</th>
-                <th className="table-header text-right">Total</th>
+                <th className="table-header text-right">Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -190,8 +189,6 @@ export default function BillDetailPage() {
                   <td className="table-cell text-xs text-gray-500">{item.manufacture_name || '—'}</td>
                   <td className="table-cell text-center">{item.qty}{item.is_loose ? ' tab' : ''}</td>
                   <td className="table-cell text-right">{formatINR(Number(item.unit_price))}</td>
-                  <td className="table-cell text-center">{item.gst_percent}%</td>
-                  <td className="table-cell text-right">{formatINR(Number(item.gst_amount))}</td>
                   <td className="table-cell text-right font-medium">{formatINR(Number(item.line_total))}</td>
                 </tr>
               ))}
@@ -202,14 +199,6 @@ export default function BillDetailPage() {
         {/* Totals */}
         <div className="flex justify-end">
           <div className="w-56 space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-500">Subtotal (taxable)</span>
-              <span>{formatINR(Number(bill.subtotal))}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">GST Total</span>
-              <span>{formatINR(Number(bill.gst_total))}</span>
-            </div>
             {Number(bill.discount_total) > 0 && (
               <div className="flex justify-between text-success">
                 <span>Discount {Number(bill.discount_percent) > 0 ? `(${Number(bill.discount_percent)}%)` : ''}</span>

@@ -164,6 +164,9 @@ CREATE TABLE purchase_items (
   manufacture_name NVARCHAR(255) NOT NULL DEFAULT ''
 );
 
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('purchases') AND name = 'notes')
+  ALTER TABLE purchases ADD notes NVARCHAR(1000) NOT NULL DEFAULT '';
+
 -- Add new supplier columns to existing purchases table
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('purchases') AND name = 'supplier_address')
   ALTER TABLE purchases ADD supplier_address NVARCHAR(500) NOT NULL DEFAULT '';
@@ -223,6 +226,22 @@ CREATE TABLE supplier_return_items (
 IF NOT EXISTS (SELECT 1 FROM app_meta WHERE [key] = 'last_return_number')
   INSERT INTO app_meta ([key], value) VALUES ('last_return_number', '0');
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- supplier_master: master list of suppliers / distributors
+-- ─────────────────────────────────────────────────────────────────────────────
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='supplier_master' AND xtype='U')
+CREATE TABLE supplier_master (
+  id            INT IDENTITY(1,1) PRIMARY KEY,
+  name          NVARCHAR(255)  NOT NULL,
+  gstin         NVARCHAR(50)   NOT NULL DEFAULT '',
+  drug_license  NVARCHAR(100)  NOT NULL DEFAULT '',
+  phone         NVARCHAR(50)   NOT NULL DEFAULT '',
+  email         NVARCHAR(255)  NOT NULL DEFAULT '',
+  address       NVARCHAR(500)  NOT NULL DEFAULT '',
+  created_at    NVARCHAR(50)   NOT NULL DEFAULT '',
+  updated_at    NVARCHAR(50)   NOT NULL DEFAULT ''
+);
+
 -- Add address and drug license to existing supplier_returns table
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('supplier_returns') AND name = 'supplier_address')
   ALTER TABLE supplier_returns ADD supplier_address NVARCHAR(500) NOT NULL DEFAULT '';
@@ -272,3 +291,33 @@ WHERE NOT EXISTS (
   SELECT 1 FROM medicine_batches mb WHERE mb.medicine_id = m.id
 )
 AND (ISNULL(mrp, 0) > 0 OR ISNULL(selling_price, 0) > 0 OR ISNULL(stock_qty, 0) > 0);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Migrate supplier data from purchases → supplier_master (idempotent).
+-- Groups by supplier_name (case-insensitive) and takes the most recent row
+-- for each supplier. Only inserts suppliers not already in supplier_master.
+-- ─────────────────────────────────────────────────────────────────────────────
+INSERT INTO supplier_master (name, gstin, drug_license, phone, address, created_at, updated_at)
+SELECT
+  p.supplier_name,
+  ISNULL(p.supplier_gstin,        ''),
+  ISNULL(p.supplier_drug_license, ''),
+  ISNULL(p.supplier_phone,        ''),
+  ISNULL(p.supplier_address,      ''),
+  MIN(p.created_at),   -- earliest purchase date as created_at
+  MAX(p.created_at)    -- latest purchase date as updated_at
+FROM purchases p
+WHERE
+  -- skip blank supplier names
+  LTRIM(RTRIM(ISNULL(p.supplier_name, ''))) <> ''
+  -- skip if a supplier with this name already exists (case-insensitive)
+  AND NOT EXISTS (
+    SELECT 1 FROM supplier_master sm
+    WHERE LOWER(LTRIM(RTRIM(sm.name))) = LOWER(LTRIM(RTRIM(p.supplier_name)))
+  )
+GROUP BY
+  p.supplier_name,
+  p.supplier_gstin,
+  p.supplier_drug_license,
+  p.supplier_phone,
+  p.supplier_address;

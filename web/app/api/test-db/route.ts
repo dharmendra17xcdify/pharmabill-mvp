@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getPool } from '@/lib/db';
+import { getDbDebugInfo, getPool } from '@/lib/db';
 
 export async function GET() {
   try {
@@ -9,9 +9,27 @@ export async function GET() {
       ok: true,
       server: result.recordset[0].server,
       version: result.recordset[0].version,
+      dbConfig: getDbDebugInfo(),
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    const details =
+      err instanceof Error
+        ? {
+            name: err.name,
+            message: err.message,
+            stack: err.stack,
+          }
+        : {
+            thrown: err,
+          };
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error: details,
+        dbConfig: getDbDebugInfo(),
+      },
+      { status: 500 }
+    );
   }
 }

@@ -48,4 +48,5 @@ export interface CartItem {
   gst_percent: number;
   gst_amount: number;
   line_total: number;
+  group: string;
 }

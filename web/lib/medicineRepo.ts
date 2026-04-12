@@ -87,6 +87,15 @@ export async function getBatchesByMedicineId(medicineId: number): Promise<Medici
  */
 export async function insertMedicine(medicine: Omit<Medicine, 'id' | 'batch_id'>): Promise<number> {
   const pool = await getPool();
+
+  // Duplicate check — same name (case-insensitive)
+  const existing = await pool.request()
+    .input('name', sql.NVarChar(255), medicine.name.trim())
+    .query(`SELECT id FROM medicines WHERE LOWER(LTRIM(RTRIM(name))) = LOWER(LTRIM(RTRIM(@name)))`);
+  if (existing.recordset.length > 0) {
+    throw new Error(`An item named "${medicine.name.trim()}" already exists (ID ${existing.recordset[0].id}). Use a different name or edit the existing item.`);
+  }
+
   const now = dayjs().toISOString();
   const transaction = new sql.Transaction(pool);
   await transaction.begin();
@@ -205,6 +214,25 @@ export async function updateMedicine(medicine: Medicine): Promise<void> {
             mrp = @mrp, selling_price = @selling_price, rate = @rate,
             discount = @discount, stock_qty = @stock_qty
           WHERE id = @batch_id
+        `);
+    } else if ((medicine.mrp || 0) > 0 || (medicine.selling_price || 0) > 0 || (medicine.stock_qty || 0) > 0 || (medicine.batch_no || '') !== '') {
+      // No batch exists yet — insert first batch now
+      await new sql.Request(transaction)
+        .input('medicine_id',   sql.Int,            medicine.id)
+        .input('batch_no',      sql.NVarChar(100),  medicine.batch_no || '')
+        .input('expiry_month',  sql.Int,            medicine.expiry_month ?? null)
+        .input('expiry_year',   sql.Int,            medicine.expiry_year ?? null)
+        .input('mrp',           sql.Decimal(10, 2), medicine.mrp || 0)
+        .input('selling_price', sql.Decimal(10, 2), medicine.selling_price || 0)
+        .input('rate',          sql.Decimal(10, 2), medicine.rate ?? 0)
+        .input('discount',      sql.Decimal(5, 2),  medicine.discount ?? 0)
+        .input('stock_qty',     sql.Int,            medicine.stock_qty ?? 0)
+        .input('created_at',    sql.NVarChar(50),   now)
+        .query(`
+          INSERT INTO medicine_batches
+            (medicine_id, batch_no, expiry_month, expiry_year, mrp, selling_price, rate, discount, stock_qty, created_at)
+          VALUES
+            (@medicine_id, @batch_no, @expiry_month, @expiry_year, @mrp, @selling_price, @rate, @discount, @stock_qty, @created_at)
         `);
     }
 

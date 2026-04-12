@@ -1,23 +1,37 @@
 'use client';
-import { useForm } from 'react-hook-form';
+import { useEffect, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { medicineSchema, MedicineFormData } from '@/utils/validators';
 import { useMedicineStore } from '@/store/useMedicineStore';
-import { GST_RATES } from '@/constants/paymentModes';
+import { GST_RATES, MEDICINE_CATEGORIES } from '@/constants/paymentModes';
 
 export default function AddMedicinePage() {
   const router = useRouter();
-  const { addMedicine } = useMedicineStore();
+  const { addMedicine, medicines, loadMedicines } = useMedicineStore();
+  const [duplicate, setDuplicate] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<MedicineFormData>({
     resolver: zodResolver(medicineSchema) as any,
     defaultValues: { gst_percent: 0, stock_qty: 0, rate: 0, discount: 0, packing_qty: 1 },
   });
+
+  const nameValue = useWatch({ control, name: 'name', defaultValue: '' });
+
+  useEffect(() => { loadMedicines(); }, []);
+
+  useEffect(() => {
+    const trimmed = (nameValue ?? '').trim().toLowerCase();
+    if (!trimmed) { setDuplicate(null); return; }
+    const match = medicines.find(m => m.name.trim().toLowerCase() === trimmed);
+    setDuplicate(match ? match.name : null);
+  }, [nameValue, medicines]);
 
   const onSubmit = async (data: MedicineFormData) => {
     await addMedicine({
@@ -33,6 +47,8 @@ export default function AddMedicinePage() {
       discount:         data.discount          ?? 0,
       manufacture_name: data.manufacture_name  ?? '',
       group:            data.group             ?? '',
+      mrp:              data.mrp               ?? 0,
+      selling_price:    data.selling_price     ?? 0,
     });
     router.push('/medicines');
   };
@@ -52,8 +68,17 @@ export default function AddMedicinePage() {
 
           <div>
             <label className="label">Item Name *</label>
-            <input className="input" placeholder="e.g. Paracetamol 500mg" {...register('name')} />
+            <input
+              className={`input ${duplicate ? 'border-warning focus:ring-warning' : ''}`}
+              placeholder="e.g. Paracetamol 500mg"
+              {...register('name')}
+            />
             {errors.name && <p className="error-text">{errors.name.message}</p>}
+            {duplicate && (
+              <p className="text-warning text-xs mt-1 flex items-center gap-1">
+                ⚠ An item named <strong>"{duplicate}"</strong> already exists. Saving will be blocked — edit the existing item instead.
+              </p>
+            )}
           </div>
 
           <div>
@@ -67,8 +92,13 @@ export default function AddMedicinePage() {
               <input className="input" placeholder="e.g. Cipla Ltd" {...register('manufacture_name')} />
             </div>
             <div>
-              <label className="label">Group</label>
-              <input className="input" placeholder="e.g. Antibiotic" {...register('group')} />
+              <label className="label">Category</label>
+              <select className="input" {...register('group')}>
+                <option value="">— Select —</option>
+                {MEDICINE_CATEGORIES.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -126,12 +156,12 @@ export default function AddMedicinePage() {
 
             <div className="grid grid-cols-3 gap-4 mt-4">
               <div>
-                <label className="label">MRP (₹) *</label>
+                <label className="label">MRP (₹)</label>
                 <input className="input" type="number" step="0.01" placeholder="0.00" {...register('mrp')} />
                 {errors.mrp && <p className="error-text">{errors.mrp.message}</p>}
               </div>
               <div>
-                <label className="label">Selling Price (₹) *</label>
+                <label className="label">Selling Price (₹)</label>
                 <input className="input" type="number" step="0.01" placeholder="0.00" {...register('selling_price')} />
                 {errors.selling_price && <p className="error-text">{errors.selling_price.message}</p>}
               </div>
@@ -157,7 +187,7 @@ export default function AddMedicinePage() {
           </div>
 
           <div className="flex gap-3 pt-2">
-            <button type="submit" className="btn-primary flex-1" disabled={isSubmitting}>
+            <button type="submit" className="btn-primary flex-1" disabled={isSubmitting || !!duplicate}>
               {isSubmitting ? 'Saving…' : 'Save Item'}
             </button>
             <button type="button" className="btn-secondary flex-1" onClick={() => router.back()}>

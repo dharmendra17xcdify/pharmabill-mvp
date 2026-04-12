@@ -7,26 +7,66 @@ import { formatINR } from '@/utils/currency';
 import { PAYMENT_MODES } from '@/constants/paymentModes';
 import { Medicine } from '@/types/medicine';
 
+const BILL_DRAFT_KEY = 'bill_draft';
+
+function loadBillDraft() {
+  try {
+    const raw = localStorage.getItem(BILL_DRAFT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function saveBillDraft(data: object) {
+  try { localStorage.setItem(BILL_DRAFT_KEY, JSON.stringify(data)); } catch {}
+}
+
+function clearBillDraft() {
+  try { localStorage.removeItem(BILL_DRAFT_KEY); } catch {}
+}
+
 export default function NewBillPage() {
   const router = useRouter();
   const { medicines, loadMedicines } = useMedicineStore();
   const { cartItems, addToCart, removeFromCart, updateQty, clearCart, computeTotals } = useBillingStore();
 
+  const draft = typeof window !== 'undefined' ? loadBillDraft() : null;
+
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Medicine[]>([]);
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerAddress, setCustomerAddress] = useState('');
-  const [doctorName, setDoctorName] = useState('');
-  const [discountPercent, setDiscountPercent] = useState(0);
-  const [paymentMode, setPaymentMode] = useState('Cash');
+  const [customerName, setCustomerName] = useState(draft?.customerName ?? '');
+  const [customerPhone, setCustomerPhone] = useState(draft?.customerPhone ?? '');
+  const [customerAddress, setCustomerAddress] = useState(draft?.customerAddress ?? '');
+  const [doctorName, setDoctorName] = useState(draft?.doctorName ?? '');
+  const [discountPercent, setDiscountPercent] = useState(draft?.discountPercent ?? 0);
+  const [paymentMode, setPaymentMode] = useState(draft?.paymentMode ?? 'Cash');
+  const [billDate, setBillDate] = useState(draft?.billDate ?? new Date().toISOString().slice(0, 10));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [qtyInputs, setQtyInputs] = useState<Record<number, number>>({});
   const [looseInputs, setLooseInputs] = useState<Record<number, boolean>>({});
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [hasDraft] = useState(!!draft);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { loadMedicines(); return () => clearCart(); }, []);
+  useEffect(() => {
+    loadMedicines();
+    // Restore cart items from draft
+    if (draft?.cartItems?.length) {
+      clearCart();
+      draft.cartItems.forEach((item: any) => {
+        useBillingStore.setState(state => ({
+          cartItems: state.cartItems.find(i => i.medicine_id === item.medicine_id)
+            ? state.cartItems
+            : [...state.cartItems, item],
+        }));
+      });
+    }
+    return () => clearCart();
+  }, []);
+
+  // Auto-save draft on every change
+  useEffect(() => {
+    saveBillDraft({ customerName, customerPhone, customerAddress, doctorName, discountPercent, paymentMode, billDate, cartItems });
+  }, [customerName, customerPhone, customerAddress, doctorName, discountPercent, paymentMode, billDate, cartItems]);
 
   useEffect(() => {
     if (!query.trim()) { setResults([]); setSelectedIndex(-1); return; }
@@ -67,7 +107,11 @@ export default function NewBillPage() {
   };
 
   const { subtotal, gstTotal, grandTotal } = computeTotals();
-  const discountAmt = parseFloat((grandTotal * discountPercent / 100).toFixed(2));
+  // Discount applies only to non-General category items
+  const discountableTotal = parseFloat(cartItems
+    .filter(i => (i.group || '') !== 'General')
+    .reduce((s, i) => s + i.line_total, 0).toFixed(2));
+  const discountAmt = parseFloat((discountableTotal * discountPercent / 100).toFixed(2));
   const finalTotal = parseFloat((grandTotal - discountAmt).toFixed(2));
 
   const handleSubmit = async () => {
@@ -90,12 +134,14 @@ export default function NewBillPage() {
             discount_total: discountAmt,
             grand_total: finalTotal,
             payment_mode: paymentMode,
+            bill_date: billDate,
           },
           items: cartItems,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      clearBillDraft();
       clearCart();
       router.push(`/bills/${data.id}`);
     } catch (e: unknown) {
@@ -107,7 +153,33 @@ export default function NewBillPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-gray-800">New Bill</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-gray-800">New Bill</h2>
+        <button
+          type="button"
+          className="btn-secondary text-sm"
+          onClick={() => {
+            setCustomerName('');
+            setCustomerPhone('');
+            setCustomerAddress('');
+            setDoctorName('');
+            setDiscountPercent(0);
+            setPaymentMode('Cash');
+            setBillDate(new Date().toISOString().slice(0, 10));
+            clearCart();
+            clearBillDraft();
+          }}
+        >
+          Clear
+        </button>
+      </div>
+
+      {hasDraft && (
+        <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm px-4 py-2 rounded-lg">
+          <span>⚡</span>
+          <span>Draft restored from your last session. Review and save, or click <strong>Clear</strong> to start fresh.</span>
+        </div>
+      )}
 
       <div className="flex gap-4 items-start">
         {/* Left: search */}
@@ -216,6 +288,15 @@ export default function NewBillPage() {
               <input className="input" placeholder="Optional" value={doctorName} onChange={e => setDoctorName(e.target.value)} />
             </div>
             <div>
+              <label className="label">Bill Date</label>
+              <input
+                className="input"
+                type="date"
+                value={billDate}
+                onChange={e => setBillDate(e.target.value)}
+              />
+            </div>
+            <div>
               <label className="label">Payment Mode</label>
               <div className="flex gap-2">
                 {PAYMENT_MODES.map(mode => (
@@ -287,14 +368,13 @@ export default function NewBillPage() {
 
           {/* Totals */}
           <div className="card space-y-2">
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>Subtotal (taxable)</span><span>{formatINR(subtotal)}</span>
-            </div>
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>GST Total</span><span>{formatINR(gstTotal)}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm text-gray-600 border-t pt-2">
-              <span>Discount %</span>
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <div>
+                <span>Discount %</span>
+                {cartItems.some(i => (i.group || '') === 'General') && (
+                  <div className="text-xs text-warning mt-0.5">General items excluded</div>
+                )}
+              </div>
               <div className="flex items-center gap-1">
                 <input
                   type="number"

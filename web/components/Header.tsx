@@ -1,22 +1,20 @@
+import Image from 'next/image';
 import { getSettings } from '@/lib/settingsRepo';
+import logo from '@/assets/logo.png';
 
 export default async function Header() {
-  let storeName = 'PharmaBill';
+  let storeName = '';
   try {
     const settings = await getSettings();
     if (settings?.store_name) storeName = settings.store_name;
-  } catch {
-    // DB not ready yet — fall back to default
-  }
+  } catch {}
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-primary shadow-md flex items-center px-6 gap-4">
-      <div className="w-56 shrink-0" /> {/* spacer matching sidebar width */}
-      <div className="flex-1 flex items-center gap-3">
-        <span className="text-white font-bold text-lg tracking-wide">{storeName}</span>
-        <span className="text-white/50 text-sm hidden sm:inline">·</span>
-        <span className="text-white/60 text-sm hidden sm:inline">Pharmacy Billing</span>
-      </div>
+    <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-blue-700 shadow flex items-center px-4 gap-3">
+      <Image src={logo} alt="PharmaFlow" width={240} height={96} className="h-12 w-auto object-contain" />
+      {storeName && (
+        <span className="text-white font-bold text-sm border-l border-white/20 pl-3">{storeName}</span>
+      )}
     </header>
   );
 }

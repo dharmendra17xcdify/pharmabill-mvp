@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import StatCard from '@/components/StatCard';
 import { formatINR } from '@/utils/currency';
 import { formatExpiry, isExpired, isExpiringSoon } from '@/utils/date';
 import { LOW_STOCK_THRESHOLD } from '@/constants/paymentModes';
@@ -29,85 +28,89 @@ export default function DashboardPage() {
     return <div className="flex items-center justify-center h-64 text-gray-400">Loading…</div>;
   }
 
+  const lowStockCount = data?.lowStockCount ?? 0;
+
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold text-gray-800">Dashboard</h2>
+      <h1 className="text-2xl font-semibold text-gray-800">Dashboard</h1>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Today's Sales"
-          value={formatINR(data?.today?.total ?? 0)}
-          sub={`${data?.today?.count ?? 0} bill(s)`}
-          color="primary"
-        />
-        <StatCard
-          label="Month Sales"
-          value={formatINR(data?.month?.total ?? 0)}
-          sub={`${data?.month?.count ?? 0} bill(s)`}
-          color="success"
-        />
-        <StatCard
-          label="Low Stock"
-          value={String(data?.lowStockCount ?? 0)}
-          sub={`≤ ${LOW_STOCK_THRESHOLD} units`}
-          color={(data?.lowStockCount ?? 0) > 0 ? 'warning' : 'success'}
-        />
+      {/* Stat cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+          <div className="text-gray-500 text-sm">Today's Sales</div>
+          <div className="text-2xl font-bold text-blue-600 mt-2">{formatINR(data?.today?.total ?? 0)}</div>
+          <div className="text-sm text-gray-400 mt-1">{data?.today?.count ?? 0} bill(s)</div>
+        </div>
+        <div className="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+          <div className="text-gray-500 text-sm">Month Sales</div>
+          <div className="text-2xl font-bold text-green-600 mt-2">{formatINR(data?.month?.total ?? 0)}</div>
+          <div className="text-sm text-gray-400 mt-1">{data?.month?.count ?? 0} bill(s)</div>
+        </div>
+        <div className="bg-white p-5 rounded-xl shadow hover:shadow-lg transition">
+          <div className="text-gray-500 text-sm">Low Stock</div>
+          <div className={`text-2xl font-bold mt-2 ${lowStockCount > 0 ? 'text-red-500' : 'text-green-600'}`}>
+            {lowStockCount}
+          </div>
+          <div className="text-sm text-gray-400 mt-1">≤ {LOW_STOCK_THRESHOLD} units</div>
+        </div>
       </div>
 
-      {/* Quick actions */}
-      <div className="card">
-        <h3 className="font-semibold text-gray-700 mb-3">Quick Actions</h3>
+      {/* Quick Actions */}
+      <div className="bg-white p-5 rounded-xl shadow">
+        <h2 className="font-semibold text-gray-800 mb-4">Quick Actions</h2>
         <div className="flex flex-wrap gap-3">
-          <Link href="/billing/new" className="btn-primary text-sm">
+          <Link href="/billing/new" className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition text-sm font-medium">
             + New Bill
           </Link>
-          <Link href="/medicines/add" className="btn-secondary text-sm">
+          <Link href="/medicines/add" className="border border-gray-300 px-5 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-gray-700">
             + Add Item
           </Link>
-          <Link href="/bills" className="btn-secondary text-sm">
+          <Link href="/bills" className="border border-gray-300 px-5 py-2 rounded-lg hover:bg-gray-100 transition text-sm font-medium text-gray-700">
             View Bills
           </Link>
         </div>
       </div>
 
-      {/* Low stock */}
+      {/* Low Stock Table */}
       {(data?.lowStockMedicines?.length ?? 0) > 0 && (
-        <div className="card">
-          <h3 className="font-semibold text-warning mb-3">
-            ⚠️ Low Stock Items ({data!.lowStockMedicines?.length ?? 0})
-          </h3>
+        <div className="bg-white p-5 rounded-xl shadow">
+          <h2 className="font-semibold text-red-500 mb-4">
+            ⚠ Low Stock Items ({data!.lowStockMedicines.length})
+          </h2>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm text-left border-collapse">
               <thead>
-                <tr>
-                  <th className="table-header rounded-tl">Item</th>
-                  <th className="table-header">Batch</th>
-                  <th className="table-header">Expiry</th>
-                  <th className="table-header rounded-tr text-right">Stock</th>
+                <tr className="bg-gray-100">
+                  <th className="p-3 font-semibold text-gray-600">Item</th>
+                  <th className="p-3 font-semibold text-gray-600">Batch</th>
+                  <th className="p-3 font-semibold text-gray-600">Expiry</th>
+                  <th className="p-3 font-semibold text-gray-600">Stock</th>
                 </tr>
               </thead>
               <tbody>
-                {(data!.lowStockMedicines ?? []).map(m => {
-                  const expired = isExpired(m.expiry_month, m.expiry_year);
+                {data!.lowStockMedicines.map(m => {
+                  const expired  = isExpired(m.expiry_month, m.expiry_year);
                   const expiring = isExpiringSoon(m.expiry_month, m.expiry_year);
+                  const stockColor = m.stock_qty <= 2
+                    ? 'bg-red-100 text-red-600'
+                    : 'bg-yellow-100 text-yellow-600';
                   return (
-                    <tr key={m.id} className="hover:bg-gray-50">
-                      <td className="table-cell">
-                        <div className="font-medium">{m.name}</div>
-                        {m.generic_name && <div className="text-gray-400 text-xs">{m.generic_name}</div>}
+                    <tr key={`${m.id}-${m.batch_id}`} className="border-b last:border-0 hover:bg-gray-50">
+                      <td className="p-3">
+                        <div className="font-medium text-gray-800">{m.name}</div>
+                        {m.generic_name && <div className="text-xs text-gray-400">{m.generic_name}</div>}
                       </td>
-                      <td className="table-cell text-gray-500">{m.batch_no || '—'}</td>
-                      <td className="table-cell">
+                      <td className="p-3 text-gray-600">{m.batch_no || '—'}</td>
+                      <td className="p-3">
                         {m.expiry_month ? (
-                          <span className={expired ? 'text-danger font-medium' : expiring ? 'text-warning font-medium' : ''}>
+                          <span className={expired ? 'text-red-500 font-medium' : expiring ? 'text-yellow-600 font-medium' : 'text-gray-600'}>
                             {formatExpiry(m.expiry_month, m.expiry_year)}
                             {expired ? ' (Expired)' : expiring ? ' (Soon)' : ''}
                           </span>
-                        ) : '—'}
+                        ) : <span className="text-gray-400">—</span>}
                       </td>
-                      <td className="table-cell text-right">
-                        <span className="badge bg-orange-100 text-warning font-bold">
+                      <td className="p-3">
+                        <span className={`px-2 py-1 rounded text-xs font-semibold ${stockColor}`}>
                           {m.stock_qty}
                         </span>
                       </td>

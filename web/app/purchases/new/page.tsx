@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useMedicineStore } from '@/store/useMedicineStore';
 import { formatINR } from '@/utils/currency';
 import type { ExtractedPO } from '@/app/api/purchases/extract/route';
+import type { Supplier } from '@/types/supplier';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -63,7 +64,7 @@ function computeRow(row: PurchaseRow) {
   const half = gst / 2;
   const cgst = taxable * half / 100;
   const sgst = taxable * half / 100;
-  const amount = taxable + cgst + sgst;
+  const amount = taxable;
   return {
     taxable: parseFloat(taxable.toFixed(2)),
     cgstPct: half,
@@ -80,21 +81,45 @@ const PAYMENT_MODES = ['Cash', 'UPI', 'Card'];
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
+const DRAFT_KEY = 'po_draft';
+
+function loadDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function saveDraft(data: object) {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(data)); } catch {}
+}
+
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch {}
+}
+
 export default function NewPurchasePage() {
   const router = useRouter();
   const { medicines, loadMedicines } = useMedicineStore();
 
+  // ── Restore draft on first render ────────────────────────────────────────────
+  const draft = typeof window !== 'undefined' ? loadDraft() : null;
+
   // Header fields
-  const [supplierName, setSupplierName] = useState('');
-  const [supplierInvoiceNo, setSupplierInvoiceNo] = useState('');
-  const [supplierGstin, setSupplierGstin] = useState('');
-  const [supplierAddress, setSupplierAddress] = useState('');
-  const [supplierPhone, setSupplierPhone] = useState('');
-  const [supplierDrugLicense, setSupplierDrugLicense] = useState('');
-  const [paymentMode, setPaymentMode] = useState('Cash');
+  const [supplierName, setSupplierName] = useState(draft?.supplierName ?? '');
+  const [supplierInvoiceNo, setSupplierInvoiceNo] = useState(draft?.supplierInvoiceNo ?? '');
+  const [supplierGstin, setSupplierGstin] = useState(draft?.supplierGstin ?? '');
+  const [supplierAddress, setSupplierAddress] = useState(draft?.supplierAddress ?? '');
+  const [supplierPhone, setSupplierPhone] = useState(draft?.supplierPhone ?? '');
+  const [supplierDrugLicense, setSupplierDrugLicense] = useState(draft?.supplierDrugLicense ?? '');
+  const [paymentMode, setPaymentMode] = useState(draft?.paymentMode ?? 'Cash');
+  const [purchaseDate, setPurchaseDate] = useState(draft?.purchaseDate ?? new Date().toISOString().slice(0, 10));
+  const [notes, setNotes] = useState(draft?.notes ?? '');
+  const [roundOff, setRoundOff] = useState(draft?.roundOff ?? false);
 
   // Rows
-  const [rows, setRows] = useState<PurchaseRow[]>([emptyRow()]);
+  const [rows, setRows] = useState<PurchaseRow[]>(draft?.rows ?? [emptyRow()]);
+  const [hasDraft] = useState(!!draft);
   const [focusedRowKey, setFocusedRowKey] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -104,12 +129,44 @@ export default function NewPurchasePage() {
   const [dropdownAnchor, setDropdownAnchor] = useState<{ top: number; left: number } | null>(null);
 
   // ── AI Import state ──────────────────────────────────────────────────────────
+  const [importOpen, setImportOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<string | null>(null); // object URL for images
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractStatus, setExtractStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
-  useEffect(() => { loadMedicines(); setMounted(true); }, []);
+  // ── Supplier master state ─────────────────────────────────────────────────
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [supplierSearch, setSupplierSearch] = useState('');
+  const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
+
+  useEffect(() => {
+    loadMedicines();
+    setMounted(true);
+    fetch('/api/suppliers').then(r => r.json()).then(setSuppliers).catch(() => {});
+  }, []);
+
+  // ── Auto-save draft on every change ─────────────────────────────────────────
+  useEffect(() => {
+    saveDraft({ supplierName, supplierInvoiceNo, supplierGstin, supplierAddress,
+      supplierPhone, supplierDrugLicense, paymentMode, purchaseDate, notes, roundOff, rows });
+  }, [supplierName, supplierInvoiceNo, supplierGstin, supplierAddress,
+      supplierPhone, supplierDrugLicense, paymentMode, purchaseDate, notes, rows]);
+
+  const filteredSuppliers = suppliers.filter(s =>
+    s.name.toLowerCase().includes(supplierSearch.toLowerCase()) ||
+    s.phone.includes(supplierSearch)
+  );
+
+  const pickSupplier = (s: Supplier) => {
+    setSupplierName(s.name);
+    setSupplierGstin(s.gstin || '');
+    setSupplierAddress(s.address || '');
+    setSupplierPhone(s.phone || '');
+    setSupplierDrugLicense(s.drug_license || '');
+    setSupplierSearch('');
+    setShowSupplierDropdown(false);
+  };
 
   // ── Row helpers ──────────────────────────────────────────────────────────────
 
@@ -119,7 +176,6 @@ export default function NewPurchasePage() {
 
   const addRow = () => {
     setRows(prev => [...prev, emptyRow()]);
-    // Scroll right / to end after adding row
     setTimeout(() => {
       if (tableRef.current) {
         tableRef.current.scrollTop = tableRef.current.scrollHeight;
@@ -130,6 +186,18 @@ export default function NewPurchasePage() {
   const deleteRow = (key: string) => {
     setRows(prev => (prev.length > 1 ? prev.filter(r => r.key !== key) : prev));
   };
+
+  // ── Insert key → add row ─────────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Insert') {
+        e.preventDefault();
+        addRow();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
 // Suggestions for the currently focused row — computed outside the row map so the portal can use them
   const activeFocusedRow = rows.find(r => r.key === focusedRowKey);
@@ -232,7 +300,7 @@ export default function NewPurchasePage() {
       acc.subtotal += c.taxable;
       acc.cgst += c.cgst;
       acc.sgst += c.sgst;
-      acc.grand += c.amount;
+      acc.grand += c.amount + c.cgst + c.sgst;
       acc.qty += Number(row.qty) || 0;
       acc.discount += c.discountAmt;
       return acc;
@@ -240,11 +308,15 @@ export default function NewPurchasePage() {
     { subtotal: 0, cgst: 0, sgst: 0, grand: 0, qty: 0, discount: 0 }
   );
 
+  const rawGrand = parseFloat(totals.grand.toFixed(2));
+  const roundOffAmt = roundOff ? parseFloat((Math.round(rawGrand) - rawGrand).toFixed(2)) : 0;
+  const finalGrand = parseFloat((rawGrand + roundOffAmt).toFixed(2));
+
   const roundedTotals = {
     subtotal: parseFloat(totals.subtotal.toFixed(2)),
     cgst: parseFloat(totals.cgst.toFixed(2)),
     sgst: parseFloat(totals.sgst.toFixed(2)),
-    grand: parseFloat(totals.grand.toFixed(2)),
+    grand: finalGrand,
     qty: totals.qty,
     discount: parseFloat(totals.discount.toFixed(2)),
   };
@@ -300,6 +372,8 @@ export default function NewPurchasePage() {
             supplier_phone: supplierPhone,
             supplier_drug_license: supplierDrugLicense,
             payment_mode: paymentMode,
+            notes,
+            purchase_date: purchaseDate,
             subtotal: roundedTotals.subtotal,
             cgst_total: roundedTotals.cgst,
             sgst_total: roundedTotals.sgst,
@@ -312,6 +386,7 @@ export default function NewPurchasePage() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to save purchase');
+      clearDraft();
       router.push(`/purchases/${data.id}`);
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : 'Failed to save purchase');
@@ -340,10 +415,13 @@ export default function NewPurchasePage() {
             setSupplierPhone('');
             setSupplierDrugLicense('');
             setPaymentMode('Cash');
+            setPurchaseDate(new Date().toISOString().slice(0, 10));
+            setNotes('');
             setRows([emptyRow()]);
             setImportFile(null);
             setImportPreview(null);
             setExtractStatus(null);
+            clearDraft();
           }}
           className="btn-secondary text-sm"
         >
@@ -351,33 +429,54 @@ export default function NewPurchasePage() {
         </button>
       </div>
 
+      {/* ── Draft restored banner ────────────────────────────────────────── */}
+      {hasDraft && (
+        <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm px-4 py-2 rounded-lg">
+          <span>⚡</span>
+          <span>Draft restored from your last session. Review and save, or click <strong>Clear</strong> to start fresh.</span>
+        </div>
+      )}
+
       {/* ── AI Import card ─────────────────────────────────────────────────── */}
       <div
         className={`card border-2 border-dashed transition-colors ${
-          importFile ? 'border-primary/40 bg-blue-50/30' : 'border-gray-200 hover:border-primary/30'
+          importFile ? 'border-primary/40 bg-blue-50/30' : 'border-gray-200'
         }`}
         onDragOver={e => { e.preventDefault(); }}
         onDrop={e => {
           e.preventDefault();
           const file = e.dataTransfer.files[0];
-          if (file) handleFileSelect(file);
+          if (file) { handleFileSelect(file); setImportOpen(true); }
         }}
       >
-        <div className="flex items-center justify-between mb-3">
+        {/* Collapsible header */}
+        <button
+          type="button"
+          className="w-full flex items-center justify-between text-left"
+          onClick={() => setImportOpen(o => !o)}
+        >
           <div>
-            <p className="font-semibold text-gray-700 text-sm">Import from Image / PDF</p>
-            <p className="text-xs text-gray-400 mt-0.5">Upload a supplier invoice or delivery challan — AI will pre-fill the form</p>
+            <p className="font-semibold text-gray-700 text-sm">
+              <span className="mr-2 text-gray-400 text-xs">{importOpen ? '▼' : '▶'}</span>
+              Import from Image / PDF
+              {importFile && <span className="ml-2 text-xs text-primary font-normal">{importFile.name}</span>}
+            </p>
+            {!importOpen && (
+              <p className="text-xs text-gray-400 mt-0.5 ml-4">Upload a supplier invoice — AI will pre-fill the form</p>
+            )}
           </div>
           {importFile && (
             <button
               type="button"
-              onClick={() => { setImportFile(null); setImportPreview(null); setExtractStatus(null); }}
+              onClick={e => { e.stopPropagation(); setImportFile(null); setImportPreview(null); setExtractStatus(null); }}
               className="text-xs text-gray-400 hover:text-danger ml-4 shrink-0"
             >
               ✕ Clear
             </button>
           )}
-        </div>
+        </button>
+
+        {importOpen && <div className="mt-3">
 
         {!importFile ? (
           /* Drop zone */
@@ -448,11 +547,39 @@ export default function NewPurchasePage() {
             </div>
           </div>
         )}
+        </div>}
       </div>
 
       {/* Supplier card */}
       <div className="card">
-        <h3 className="font-semibold text-gray-700 mb-3">Supplier Details</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-gray-700">Supplier Details</h3>
+          <div className="relative">
+            <input
+              className="input text-sm w-56"
+              placeholder="Pick from Supplier Master…"
+              value={supplierSearch}
+              onFocus={() => setShowSupplierDropdown(true)}
+              onBlur={() => setTimeout(() => setShowSupplierDropdown(false), 150)}
+              onChange={e => { setSupplierSearch(e.target.value); setShowSupplierDropdown(true); }}
+            />
+            {showSupplierDropdown && filteredSuppliers.length > 0 && (
+              <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg w-72 max-h-48 overflow-y-auto">
+                {filteredSuppliers.map(s => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onMouseDown={() => pickSupplier(s)}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 border-b last:border-0"
+                  >
+                    <p className="font-medium text-gray-800">{s.name}</p>
+                    {s.phone && <p className="text-xs text-gray-400">{s.phone}</p>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
         <div className="grid grid-cols-3 gap-3 mb-3">
           <div>
             <label className="label">Supplier Name</label>
@@ -512,7 +639,27 @@ export default function NewPurchasePage() {
           />
         </div>
         <div className="mt-3">
-          <label className="label mb-1 block">Payment Mode</label>
+          <label className="label">Notes</label>
+          <textarea
+            className="input"
+            rows={2}
+            placeholder="Optional remarks, e.g. partial delivery, credit terms…"
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          <div>
+            <label className="label">Purchase Date</label>
+            <input
+              className="input"
+              type="date"
+              value={purchaseDate}
+              onChange={e => setPurchaseDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="label mb-1 block">Payment Mode</label>
           <div className="flex gap-2">
             {PAYMENT_MODES.map(mode => (
               <button
@@ -529,6 +676,7 @@ export default function NewPurchasePage() {
               </button>
             ))}
           </div>
+          </div>
         </div>
       </div>
 
@@ -536,7 +684,7 @@ export default function NewPurchasePage() {
       <div className="card p-0">
         <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
           <span className="font-semibold text-gray-700 text-sm">Items</span>
-          <button onClick={addRow} className="btn-primary text-xs py-1 px-3">+ Add Row</button>
+          <button onClick={addRow} className="btn-primary text-xs py-1 px-3">+ Add Row <kbd className="ml-1 opacity-60 font-mono">Ins</kbd></button>
         </div>
         <div className="overflow-x-auto" ref={tableRef}>
           <table className="text-xs" style={{ minWidth: 1080, width: '100%', borderCollapse: 'collapse' }}>
@@ -852,6 +1000,22 @@ export default function NewPurchasePage() {
           <div className="flex justify-between text-gray-600">
             <span>SGST Total</span>
             <span>{formatINR(roundedTotals.sgst)}</span>
+          </div>
+          <div className="flex items-center justify-between border-t pt-2">
+            <label className="flex items-center gap-2 text-gray-600 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={roundOff}
+                onChange={e => setRoundOff(e.target.checked)}
+                className="w-4 h-4 accent-primary"
+              />
+              Round Off
+            </label>
+            {roundOff && (
+              <span className={roundOffAmt >= 0 ? 'text-success text-sm' : 'text-danger text-sm'}>
+                {roundOffAmt >= 0 ? '+' : ''}{formatINR(Math.abs(roundOffAmt))}
+              </span>
+            )}
           </div>
           <div className="flex justify-between text-base font-bold text-primary border-t pt-2">
             <span>Grand Total</span>

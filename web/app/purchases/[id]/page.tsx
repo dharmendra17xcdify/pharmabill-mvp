@@ -70,9 +70,10 @@ export default function PurchaseDetailPage() {
           <button onClick={() => router.back()} className="text-primary text-sm hover:underline">← Back</button>
           <h2 className="text-xl font-bold text-gray-800">Purchase {purchase.purchase_number}</h2>
         </div>
-        <button onClick={handlePrint} className="btn-primary text-sm">
-          🖨 Print / PDF
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => router.push(`/purchases/${id}/edit`)} className="btn-secondary text-sm">Edit</button>
+          <button onClick={handlePrint} className="btn-primary text-sm">🖨 Print / PDF</button>
+        </div>
       </div>
 
       {/* Meta card */}

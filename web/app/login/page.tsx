@@ -1,6 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import logo from '@/assets/logo big.png';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -8,6 +10,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [storeName, setStoreName] = useState('PharmaFlow');
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(data => { if (data?.store_name) setStoreName(data.store_name); })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,14 +44,17 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white rounded-lg shadow-md w-full max-w-sm p-8">
-        <div className="text-center mb-7">
-          <div className="text-4xl mb-2">💊</div>
-          <h1 className="text-2xl font-bold text-primary">PharmaBill</h1>
-          <p className="text-gray-400 text-sm mt-1">Sign in to continue</p>
+      <div className="bg-white rounded-xl shadow-md w-full max-w-sm px-8 py-6">
+        <div className="text-center mb-5">
+          <Image src={logo} alt="PharmaFlow" width={500} height={200} className="h-20 w-auto object-contain mx-auto" />
+          {storeName && storeName !== 'PharmaFlow' && (
+            <h1 className="text-base font-bold text-gray-800 mt-1">{storeName}</h1>
+          )}
+          <p className="text-xs text-blue-500 font-medium mt-0.5">Seamless Pharmacy Billing &amp; Inventory</p>
+          <p className="text-gray-400 text-xs mt-1">Sign in to continue</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="label">Username</label>
             <input
@@ -68,7 +81,7 @@ export default function LoginPage() {
 
           {error && <p className="text-danger text-sm">{error}</p>}
 
-          <button type="submit" className="btn-primary w-full mt-2" disabled={loading}>
+          <button type="submit" className="btn-primary w-full" disabled={loading}>
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>

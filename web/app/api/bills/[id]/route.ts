@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getBillById, deleteBill } from '@/lib/billRepo';
+import { getBillById, updateBill, deleteBill } from '@/lib/billRepo';
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -10,6 +10,27 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   } catch (err) {
     console.error('GET /api/bills/[id]', err);
     return NextResponse.json({ error: 'Failed to load bill' }, { status: 500 });
+  }
+}
+
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const { bill, items } = await req.json();
+    // Combine chosen date with current time to avoid midnight UTC offset
+    const created_at = bill.bill_date
+      ? (() => {
+          const now = new Date();
+          const [y, m, d] = bill.bill_date.split('-').map(Number);
+          now.setFullYear(y, m - 1, d);
+          return now.toISOString();
+        })()
+      : undefined;
+    await updateBill(Number(id), { ...bill, ...(created_at ? { created_at } : {}) }, items);
+    return NextResponse.json({ ok: true });
+  } catch (err: any) {
+    console.error('PUT /api/bills/[id]', err);
+    return NextResponse.json({ error: err?.message ?? 'Failed to update bill' }, { status: 500 });
   }
 }
 

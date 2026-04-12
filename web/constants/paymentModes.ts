@@ -5,6 +5,18 @@ export const LOW_STOCK_THRESHOLD = 5;
 
 export const GST_RATES = [0, 5, 12, 18, 28];
 
+export const MEDICINE_CATEGORIES = [
+  'Medicine',
+  'General',
+  'Surgical',
+  'Cosmetic',
+  'Ayurvedic',
+  'Homeopathic',
+  'Veterinary',
+  'Equipment',
+  'Other',
+] as const;
+
 export const COLORS = {
   primary: '#1565C0',
   primaryLight: '#E3F2FD',

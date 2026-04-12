@@ -21,8 +21,6 @@ export function buildInvoiceHTML(
       <td>${item.manufacture_name || ''}</td>
       <td style="text-align:center">${item.qty}${item.is_loose ? ' tab' : ''}</td>
       <td style="text-align:right">₹${Number(item.unit_price).toFixed(2)}</td>
-      <td style="text-align:center">${item.gst_percent}%</td>
-      <td style="text-align:right">₹${Number(item.gst_amount).toFixed(2)}</td>
       <td style="text-align:right">₹${Number(item.line_total).toFixed(2)}</td>
     </tr>`
     )
@@ -98,17 +96,13 @@ export function buildInvoiceHTML(
         <th>Manufacturer</th>
         <th style="text-align:center;width:36px">Qty</th>
         <th style="text-align:right;width:72px">Rate</th>
-        <th style="text-align:center;width:40px">GST%</th>
-        <th style="text-align:right;width:64px">GST Amt</th>
-        <th style="text-align:right;width:72px">Total</th>
+        <th style="text-align:right;width:80px">Amount</th>
       </tr>
     </thead>
     <tbody>${itemRows}</tbody>
   </table>
   <div class="totals">
     <table>
-      <tr><td>Subtotal (taxable)</td><td style="text-align:right">₹${Number(bill.subtotal).toFixed(2)}</td></tr>
-      <tr><td>GST Total</td><td style="text-align:right">₹${Number(bill.gst_total).toFixed(2)}</td></tr>
       ${Number(bill.discount_total) > 0 ? `<tr><td>Discount${Number(bill.discount_percent) > 0 ? ` (${Number(bill.discount_percent)}%)` : ''}</td><td style="text-align:right">- ₹${Number(bill.discount_total).toFixed(2)}</td></tr>` : ''}
       <tr class="grand"><td><strong>Grand Total</strong></td><td style="text-align:right"><strong>₹${Number(bill.grand_total).toFixed(2)}</strong></td></tr>
     </table>

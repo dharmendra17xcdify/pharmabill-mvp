@@ -9,14 +9,14 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#1565C0',
-          light: '#E3F2FD',
-          dark: '#0d47a1',
+          DEFAULT: '#2563eb', // blue-600
+          light:   '#dbeafe', // blue-100
+          dark:    '#1d4ed8', // blue-700
         },
         secondary: '#00897B',
-        danger: '#D32F2F',
-        warning: '#F57C00',
-        success: '#388E3C',
+        danger:    '#ef4444', // red-500
+        warning:   '#f59e0b', // amber-500
+        success:   '#22c55e', // green-500
       },
     },
   },

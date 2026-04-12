@@ -51,6 +51,7 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
             gst_percent: medicine.gst_percent,
             gst_amount: gstAmount,
             line_total: lineTotal,
+            group: medicine.group ?? '',
           },
         ],
       }));
